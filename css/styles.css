@@ -1,0 +1,123 @@
+@import url('https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap');
+
+:root{
+    --color-primario: #0ae98a;
+    --color-secundario: #13161c;
+    --color-fondo: rgb(130, 108, 187);
+    --color-texto: #fff;
+}
+
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body{
+    font-family: "MedievalSharp", cursive;
+    background-image: url('../assets/backCombat.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed; 
+    
+    background-color: var(--color-fondo); 
+}
+
+.contenedor-mascotas{
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+
+    .tituloPrincipal{
+        font-size: 3rem;
+        color: var(--color-primario);
+        text-align: center;
+        text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.6);
+        margin-top: 10px;
+    }
+
+    .subtitulo{
+        font-size: 1.5rem;
+        color: var(--color-secundario);
+        margin-top: 10px;
+        text-shadow: 1px 1px 2px rgba(247, 245, 245, 0.7);
+    }
+
+    .tarjetas{
+        display: flex;
+        gap: 20px;
+        margin: 20px 0;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+
+        :hover img{
+            animation-play-state:running;
+            transform: translateY(-20px) translateX(40px);
+        }
+
+        .tarjeta-animal {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: auto;
+            min-width: 110px;
+            max-width: 150px;
+            min-height: 100px;
+            padding: 10px 12px;
+            box-sizing: border-box;
+            border: 1px solid var(--color-primario);
+            border-radius: 24px;
+            background-color: var(--color-fondo);
+            color: var(--color-texto);
+            cursor: pointer;
+            /*transition: transform 0.2s;*/
+
+            background-size: cover;
+            border-radius: 5px;
+            transition: 1s;
+
+            &:hover {
+                transform: perspective(20px) rotateX(2deg) translateY(-50px);
+            }
+
+            input[type="radio"] {
+                display: none;
+            }
+
+            &:has(input[type="radio"]:checked) {
+                border: 3px solid var(--color-primario);
+                background-color: var(--color-secundario);
+            }
+
+            p {
+                word-break: normal;  
+                text-align: center;
+                text-wrap: balance;
+                overflow-wrap: break-word;
+                hyphens: auto;
+                margin: 0;  
+                font-size: 1rem;
+                line-height: 1.3; 
+            }
+
+            img {
+                width: 140px;
+                height: 140px;
+                object-fit: contain;
+
+                background-size: 100%;
+                background-repeat: no-repeat;
+                animation: gifAnimation 0.1s linear infinite;
+                bottom: 0;
+                animation-play-state: paused;
+                transition: 1s;
+            }
+        } 
+    }
+}

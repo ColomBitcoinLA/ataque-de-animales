@@ -3,30 +3,45 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mokepon</title>
+        <link rel="stylesheet" href="./css/styles.css">
+        <title>Animal Combat</title>
     </head>
     <body>
-        <h1>MOKEPON 💧🌱🔥</h1>
+        
+        <section id="seleccionar-mascota" class="contenedor-mascotas">
 
-        <section id="seleccionar-mascota">
-            <h2>Elige tu mascota:</h2>
+            <h1 id="tituloH1" class="tituloPrincipal">Animal Combat</h1>
 
-            <label for="acuaman">acuaman
-                <input type="radio" name="mascota" id="acuaman"/>
-            </label>
-            
-            <label for="capitanPlaneta">capitanPlaneta
-                <input type="radio" name="mascota" id="capitanPlaneta"/>
-            </label>
-            
-            <label for="charmander">charmander
-                <input type="radio" name="mascota" id="charmander"/>
-            </label>
-            
+            <h2 class="subtitulo">Elige tu mascota:</h2>
+
+            <div class="tarjetas">
+
+                <label class="tarjeta-animal">
+                    <p>Acuaman</p>
+                    <img src="./assets/agua.webp" alt="Acuaman"/>
+                    <input type="radio" name="mascota" value="acuaman" id="acuaman"/>
+                </label>
+                
+                <label class="tarjeta-animal">
+                    <p>Capitán Planeta</p>
+                    <img src="./assets/tierra.webp" alt="Capitán Planeta"/>
+                    <input type="radio" name="mascota" value="capitanPlaneta" id="capitanPlaneta"/>
+                </label>
+                
+                <label class="tarjeta-animal">
+                    <p>Charmander</p>
+                    <img src="./assets/fuego.webp" alt="Charmander"/>
+                    <input type="radio" name="mascota" value="charmander" id="charmander"/>
+                </label>
+            </div>
+
             <button id="botonMascota">Seleccionar</button>
         </section>
 
         <section id="seleccionar-ataque">
+
+            <h1 id="tituloH1" class="tituloPrincipal">Animal Combat</h1>
+
             <h2>Elige tu ataque:</h2>
 
             <p>Tu mascota <span id="mascota-jugador"></span> tiene <span id="vidas-jugador">3</span> vidas</p>
