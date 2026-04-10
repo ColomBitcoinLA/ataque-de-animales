@@ -20,7 +20,6 @@ body{
     background-position: center;
     background-repeat: no-repeat;
     background-attachment: fixed; 
-    
     background-color: var(--color-fondo); 
 }
 
@@ -55,9 +54,9 @@ body{
         align-items: center;
         flex-wrap: wrap;
 
-        :hover img{
+        :hover img {
             animation-play-state:running;
-            transform: translateY(-20px) translateX(40px);
+            transform: translateY(50px) translateX(-4px);
         }
 
         .tarjeta-animal {
@@ -76,14 +75,13 @@ body{
             background-color: var(--color-fondo);
             color: var(--color-texto);
             cursor: pointer;
-            /*transition: transform 0.2s;*/
 
             background-size: cover;
             border-radius: 5px;
             transition: 1s;
 
             &:hover {
-                transform: perspective(20px) rotateX(2deg) translateY(-50px);
+                transform: perspective(20px) rotateX(1.87deg) translateY(-20px);
             }
 
             input[type="radio"] {
@@ -93,6 +91,13 @@ body{
             &:has(input[type="radio"]:checked) {
                 border: 3px solid var(--color-primario);
                 background-color: var(--color-secundario);
+                p{
+                    color: var(--color-texto);
+                    /*text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);*/
+
+                    text-shadow: -0.24px -0.24px 0 var(--color-primario), 0.24px -0.24px 0 var(--color-primario), -0.24px 0.24px 0 var(--color-primario), 0.24px 0.24px 0 var(--color-primario);
+                    -webkit-text-stroke: 0.24px var(--color-primario);
+                }
             }
 
             p {
@@ -103,7 +108,29 @@ body{
                 hyphens: auto;
                 margin: 0;  
                 font-size: 1rem;
-                line-height: 1.3; 
+                line-height: 1.3;
+           
+                font-weight: bold;           
+                color: var(--color-texto); 
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+                
+                background-size: 100%;
+                background-repeat: no-repeat;
+                animation: gifAnimation 0.1s linear infinite;
+                bottom: 0;
+                animation-play-state: paused;
+                transition: 1s;
+
+                z-index: 10;
+            }
+
+            &:hover p {
+                animation-play-state:running;
+                transform: translateY(-25px) translateX(-0.5px);
+
+                font-size: 2.4rem;           
+                color: var(--color-primario);              
+                text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
             }
 
             img {
