@@ -11,7 +11,6 @@
         <section id="seleccionar-mascota" class="contenedor-mascotas">
 
             <h1 id="tituloH1" class="tituloPrincipal">Animal Combat</h1>
-
             <h2 class="subtitulo">Elige tu mascota:</h2>
 
             <div class="tarjetas">
@@ -38,29 +37,38 @@
             <button id="botonMascota" class="animarBoton">Continuar</button>
         </section>
 
-        <section id="seleccionar-ataque">
+        <section id="seleccionar-ataque" class="contenedor-ataques">
 
             <h1 id="tituloH1" class="tituloPrincipal">Animal Combat</h1>
-
-            <h2>Elige tu ataque:</h2>
-
-            <p>Tu mascota <span id="mascota-jugador"></span> tiene <span id="vidas-jugador">3</span> vidas</p>
-            <p>La mascota <span id="mascota-enemigo"></span> del enemigo tiene <span id="vidas-enemigo">3</span> vidas</p>
+            <h2 class="subtitulo">Elige tu ataque:</h2>
 
             <div>
-                <button id="botonFuego">Fuego🔥</button>
-                <button id="botonAgua">Agua💧</button>
-                <button id="botonTierra">Tierra🌱</button>
+                <button id="botonFuego" class="botonAtaque">Fuego🔥</button>
+                <button id="botonAgua" class="botonAtaque">Agua💧</button>
+                <button id="botonTierra" class="botonAtaque">Tierra🌱</button>
             </div>
-            
-        </section>
 
-        <section id="mensajes">
-            <!--<p>Tu mascota atacó con FUEGO, la mascota del enemigo atacó con TIERRA - GANASTE 🎉</p> -->
-        </section>
+            <div id="mensajes" class="contenedor-mensajes">
+                <p id="resultado">Mucha suerte!</p>
 
-        <section id="reiniciar">
-            <button id="botonReiniciar">Reiniciar juego</button>
+                <section id="reiniciar" class="contenedor-reiniciar">
+                    <button id="botonReiniciar" class="reiniciarBoton">Volver a Jugar</button>
+                </section>
+            </div>
+
+            <div class="contenedor-resultados">
+                <div class="contenedor-jugador">
+                    <span id="vidas-jugador">3</span>
+                    <span id="mascota-jugador"></span>
+                    <div id="ataqueDelJugador"></div>
+                </div>
+
+                <div class="contenedor-enemigo">
+                    <span id="vidas-enemigo">3</span>
+                    <span id="mascota-enemigo"></span>
+                    <div id="ataqueDelEnemigo"></div>
+                </div>
+            </div>
         </section>
 
         <script src="./js/mokepon.js"></script>

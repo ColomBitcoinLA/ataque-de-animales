@@ -34,7 +34,7 @@ function seleccionarMascotaJugador() { //funcion para seleccionar mascota del ju
     sectionSeleccionarMascota.style.display = "none" //ocultar la seccion de seleccionar mascota
 
     let sectionSeleccionarAtaque = document.getElementById("seleccionar-ataque") 
-    sectionSeleccionarAtaque.style.display = "block" //mostrar la seccion de seleccionar ataque
+    sectionSeleccionarAtaque.style.display = "flex" //mostrar la seccion de seleccionar ataque
 
     let inputAcuaman = document.getElementById("acuaman") //variable para seleccionar el input de acuaman
     let inputCapitanPlaneta = document.getElementById("capitanPlaneta") //variable para seleccionar el input de capitanPlaneta
@@ -42,16 +42,16 @@ function seleccionarMascotaJugador() { //funcion para seleccionar mascota del ju
     let spanMascotaJugador = document.getElementById("mascota-jugador") //variable para seleccionar el span de mascota del jugador
 
     if (inputAcuaman.checked) { //condicional para seleccionar acuaman
-        spanMascotaJugador.innerHTML = "Acuaman" //cambiar el contenido del span de mascota del jugador por acuaman;
-        alert("Has seleccionado a acuaman");
+        spanMascotaJugador.innerHTML = "Neptuno" //cambiar el contenido del span de mascota del jugador por acuaman;
+        alert("Has seleccionado a Neptuno");
 
     } else if (inputCapitanPlaneta.checked) { //condicional para seleccionar capitanPlaneta
-        spanMascotaJugador.innerHTML = "Capitan Planeta" //cambiar el contenido del span de mascota del jugador por capitanPlaneta;
-        alert("Has seleccionado a capitan planeta");
+        spanMascotaJugador.innerHTML = "Tierrudo" //cambiar el contenido del span de mascota del jugador por capitanPlaneta;
+        alert("Has seleccionado a Tierrudo");
 
     } else if (inputCharmander.checked) { //condicional para seleccionar charmander
-        spanMascotaJugador.innerHTML = "Charmander" //cambiar el contenido del span de mascota del jugador por charmander;
-        alert("Has seleccionado a charmander");
+        spanMascotaJugador.innerHTML = "Salamander" //cambiar el contenido del span de mascota del jugador por charmander;
+        alert("Has seleccionado a Salamander");
 
     } else { //condicional para seleccionar una mascota
         alert("Selecciona una mascota");
@@ -66,13 +66,13 @@ function seleccionarMascotaEnemigo() { //funcion para seleccionar mascota del en
     let spanMascotaEnemigo = document.getElementById("mascota-enemigo") //variable para seleccionar el span de mascota del enemigo
 
     if (mascotaAleatoria === 1) {
-        spanMascotaEnemigo.innerHTML = "Acuaman"
+        spanMascotaEnemigo.innerHTML = "Neptuno"
 
     } else if (mascotaAleatoria === 2) {
-        spanMascotaEnemigo.innerHTML = "Capitan Planeta"
+        spanMascotaEnemigo.innerHTML = "Tierrudo"
 
     } else {
-        spanMascotaEnemigo.innerHTML = "Charmander"
+        spanMascotaEnemigo.innerHTML = "Salamander"
     }
 }
 
@@ -166,20 +166,33 @@ function revisarVidas() { //funcion para revisar si el jugador o el enemigo perd
 
 function crearMensaje(resultado) { //funcion para crear mensaje del resultado del combate
 
-    let sectionMensajes = document.getElementById("mensajes") //variable para seleccionar la seccion de mensajes
-    let parrafo = document.createElement("p") //variable para crear un parrafo
+    let sectionMensajes = document.getElementById("resultado") //variable para seleccionar la seccion de mensajes
+    let ataqueDelJugador = document.getElementById("ataqueDelJugador") //variable para seleccionar la seccion de ataque del jugador
+    let ataqueDelEnemigo = document.getElementById("ataqueDelEnemigo") //variable para seleccionar la seccion de ataque del enemigo
 
-    parrafo.innerHTML = resultado
-    sectionMensajes.appendChild(parrafo)
+    //let notificacion = document.createElement("p") //variable para crear un parrafo
+    let nuevoAtaqueJugador = document.createElement("p") //variable para crear el parrafo del ataque del jugador
+    let nuevoAtaqueEnemigo = document.createElement("p") //variable para crear el parrafo del ataque del enemigo
+
+    //let parrafo = document.createElement("p") //variable para crear un parrafo
+
+    sectionMensajes.innerHTML = resultado
+    nuevoAtaqueJugador.innerHTML = ataqueJugador
+    nuevoAtaqueEnemigo.innerHTML = ataqueEnemigo
+
+    //parrafo.innerHTML = resultado
+    //sectionMensajes.appendChild(notificacion)
+    ataqueDelJugador.appendChild(nuevoAtaqueJugador)
+    ataqueDelEnemigo.appendChild(nuevoAtaqueEnemigo)
 }
 
 function crearMensajeFinal(resultadoFinal) { //funcion para crear mensaje del resultado del combate
 
-    let sectionMensajes = document.getElementById("mensajes") //variable para seleccionar la seccion de mensajes
-    let parrafo = document.createElement("p") //variable para crear un parrafo
+    let sectionMensajes = document.getElementById("resultado") //variable para seleccionar la seccion de mensajes
+    //let parrafo = document.createElement("p") //variable para crear un parrafo
     
-    parrafo.innerHTML = resultadoFinal
-    sectionMensajes.appendChild(parrafo)
+    sectionMensajes.innerHTML = resultadoFinal
+    //sectionMensajes.appendChild(parrafo)
 
     let botonFuego = document.getElementById("botonFuego") 
     botonFuego.disabled = true
