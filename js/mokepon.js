@@ -1,5 +1,4 @@
 //CONSTANTES Y SELECTORES:
-
 const sectionReiniciar = document.getElementById("reiniciar")
 const sectionSeleccionarMascota = document.getElementById("seleccionar-mascota")
 const sectionSeleccionarAtaque = document.getElementById("seleccionar-ataque")
@@ -20,14 +19,12 @@ const contenedorTarjetas = document.getElementById("contenedor-tarjetas")
 const contenedorAtaques = document.getElementById("contenedor-ataque")
 
 //CONFIGURACIÓN DEL JUEGO:
-
 const TIPOS_ATAQUE = [
     { nombre: "FUEGO", emoji: "🔥", id: "botonFuego" },
     { nombre: "AGUA", emoji: "💧", id: "botonAgua" },
     { nombre: "TIERRA", emoji: "🌱", id: "botonTierra" }
 
 ]
-
 const FUERZA_ATAQUES = {
     "FUEGO": "TIERRA",  
     "AGUA": "FUEGO",    
@@ -35,7 +32,6 @@ const FUERZA_ATAQUES = {
 }
 
 //VARIABLES GLOBALES
-
 let animales = []
 let ataqueJugador = []
 let ataqueEnemigo = []
@@ -47,7 +43,6 @@ let rondasJugador = 0
 let rondasEnemigo = 0
 
 //CLASES:
-
 class Animal { 
     constructor(nombre, foto, vida) {
         this.nombre = nombre
@@ -57,8 +52,7 @@ class Animal {
     }
 }
 
- //INSTANCIAS DE ANIMALES:
-
+//INSTANCIAS DE ANIMALES:
 let neptuno = new Animal("Neptuno", "./assets/agua.webp", 3)
 let tierrudo = new Animal("Tierrudo", "./assets/tierra.webp", 3)
 let salamander = new Animal("Salamander", "./assets/fuego.webp", 3)
@@ -87,7 +81,6 @@ salamander.ataques = [
 animales.push(neptuno, tierrudo, salamander)
 
 //FUNCIONES AUXILIARES:
-
 function aleatorio(min, max) { 
     return Math.floor(Math.random() * (max - min + 1) + min);
 }
@@ -105,7 +98,6 @@ function obtenerAtaqueAleatorio() {
 }
 
 //FUNCIONES PRINCIPALES:
-
 function iniciarJuego() { 
     sectionSeleccionarAtaque.style.display = "none" 
     sectionReiniciar.style.display = "none" 
@@ -277,7 +269,7 @@ function finalizarJuego() {
         mensajeFinal = `🤝 EMPATE TOTAL! ${rondasJugador} vs ${rondasEnemigo} 🤝`;
     }
 
-     const pFinal = document.createElement("p");
+    const pFinal = document.createElement("p");
     pFinal.innerHTML = mensajeFinal;
     pFinal.classList.add("mensaje-final");
     sectionMensajes.appendChild(pFinal);
