@@ -214,14 +214,14 @@ body{
 
         &:after {
             top: -1px; left: -1px;
-            border-top: 2.24px solid var(--color-fondo);
-            border-left: 2.24px solid var(--color-fondo);
+            border-top: 1.87px solid var(--color-primario);
+            border-left: 1.87px solid var(--color-primario);
         }
 
         &:before {
             bottom: -1px; right: -1px;
-            border-bottom: 2.24px solid var(--color-fondo);
-            border-right: 2.24px solid var(--color-fondo);
+            border-bottom: 1.87px solid var(--color-primario);
+            border-right: 1.87px solid var(--color-primario);
         }
 
         &:hover {
@@ -308,28 +308,91 @@ body{
         place-items: center;
         background-color: rgb(19, 22, 28, 0.87);
 
-        .contenedor-jugador, .contenedor-enemigo {
+        .contenedor-jugador {
             display: flex;
             flex-direction: column;
             align-items: center;
+            width: 100%;
+            min-width: 140px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            padding: 10px;
+        }
 
-            #vidas-jugador, #vidas-enemigo {
-                font-size: 2rem;
-                color: var(--color-primario);
-                margin-top: 8px;
-            }
+        .contenedor-enemigo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            min-width: 140px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            padding: 10px;
+        }
 
-            #mascota-jugador, #mascota-enemigo {
-                font-size: 1.5rem;
-                color: var(--color-texto);
-                margin-top: 4px;
-            }
+        #vidas-jugador {
+            font-size: 2rem;
+            color: var(--color-primario);
+            margin-top: 8px;
+        }
 
-            #ataqueDelJugador, #ataqueDelEnemigo{
-                font-size: 1.25rem;
-                color: var(--color-fondo);
-                margin-top: 4px;
-            }
+        #vidas-enemigo {
+            font-size: 2rem;
+            color: var(--color-primario);
+            margin-top: 8px;
+        }
+
+        #mascota-jugador {
+            font-size: 1.5rem;
+            color: var(--color-texto);
+            margin-top: 4px;
+        }
+
+        #mascota-enemigo {
+            font-size: 1.5rem;
+            color: var(--color-texto);
+            margin-top: 4px;
+        }
+
+        #ataqueDelJugador{
+            font-size: 1.25rem;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+            min-height: 150px;
+            background-color: black;
+            border-radius: 12px;
+            padding: 10px;
+            margin-top: 12px;
+        }
+
+        #ataqueDelEnemigo{
+            font-size: 1.25rem;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+            min-height: 150px;
+            background-color: black;
+            border-radius: 12px;
+            padding: 10px;
+            margin-top: 12px;
+        }
+
+        .ataque-individual {
+            display: block;
+            background-color: #1a1a2e;
+            color: #0ae98a;
+            font-size: 0.85rem;
+            padding: 6px 10px;
+            margin: 4px 0;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 3px solid #0ae98a;
+            font-family: "MedievalSharp", cursive;
         }
     }
 }
