@@ -43,6 +43,8 @@ let opcionDeAnimales
 let botonesAtaques = []
 let nombreMascotaJugador = ""
 let nombreMascotaEnemigo = ""
+let rondasJugador = 0
+let rondasEnemigo = 0
 
 //CLASES:
 
@@ -66,21 +68,21 @@ neptuno.ataques = [
     {id: "botonAgua"},  // 💧
     {id: "botonAgua"},  // 💧
     {id: "botonTierra"}, // 🌱
-    {id: "botonFuego"}   // 🔥
+    {id: "botonFuego"},   // 🔥
 ]
 tierrudo.ataques = [
     {id: "botonTierra"}, // 🌱
     {id: "botonTierra"}, // 🌱
     {id: "botonTierra"}, // 🌱
     {id: "botonAgua"},   // 💧
-    {id: "botonFuego"}   // 🔥
+    {id: "botonFuego"},   // 🔥
 ]
 salamander.ataques = [
     {id: "botonFuego"},  // 🔥
     {id: "botonFuego"},  // 🔥
     {id: "botonFuego"},  // 🔥
     {id: "botonTierra"}, // 🌱
-    {id: "botonAgua"}    // 💧
+    {id: "botonAgua"},    // 💧
 ]
 animales.push(neptuno, tierrudo, salamander)
 
@@ -126,6 +128,7 @@ function iniciarJuego() {
 iniciarJuego(); 
 
 function seleccionarMascotaJugador() { 
+
     const mascotaSeleccionada = document.querySelector('#contenedor-tarjetas input[name="mascota"]:checked')
     
     if (!mascotaSeleccionada) {
@@ -136,6 +139,12 @@ function seleccionarMascotaJugador() {
     nombreMascotaJugador = mascotaSeleccionada.value
     spanMascotaJugador.innerHTML = nombreMascotaJugador
     sectionMensajes.innerHTML = `✅ Has seleccionado a ${nombreMascotaJugador}`;
+
+    rondasJugador = 0;
+    rondasEnemigo = 0;
+    spanVidasJugador.innerHTML = rondasJugador;  
+    spanVidasEnemigo.innerHTML = rondasEnemigo;
+
     ataqueDelJugador.innerHTML = ""
     ataqueDelEnemigo.innerHTML = ""
 
@@ -219,16 +228,21 @@ function secuenciarAtaque() {
 
             let resultadoRonda = "";
             let emojiResultado = "";
+
             if (ataqueJug === ataqueEnem) {
                 resultadoRonda = "Empate";
                 emojiResultado = "🤝";
+                
             } else if (FUERZA_ATAQUES[ataqueJug] === ataqueEnem) {
                 resultadoRonda = "Ganaste";
                 emojiResultado = "✅";
-            
+                rondasJugador++;
+                spanVidasJugador.innerHTML = rondasJugador;  
             } else {
                 resultadoRonda = "Perdiste";
                 emojiResultado = "❌";
+                rondasEnemigo++;
+                spanVidasEnemigo.innerHTML = rondasEnemigo;  
             }
 
             const pRonda = document.createElement("p");
@@ -255,18 +269,19 @@ function finalizarJuego() {
     }
 
     let mensajeFinal = "";
-    if (victoriasJugador > victoriasEnemigo) {
-        mensajeFinal = `🎉 GANASTE EL JUEGO! ${victoriasJugador} vs ${victoriasEnemigo} 🎉`;
-    } else if (victoriasEnemigo > victoriasJugador) {
-        mensajeFinal = `💀 PERDISTE EL JUEGO! ${victoriasJugador} vs ${victoriasEnemigo} 💀`;
+    if (rondasJugador > rondasEnemigo) {
+        mensajeFinal = `🎉 GANASTE EL JUEGO! ${rondasJugador} vs ${rondasEnemigo} 🎉`;
+    } else if (rondasEnemigo > rondasJugador) {
+        mensajeFinal = `💀 PERDISTE EL JUEGO! ${rondasJugador} vs ${rondasEnemigo} 💀`;
     } else {
-        mensajeFinal = `🤝 EMPATE TOTAL! ${victoriasJugador} vs ${victoriasEnemigo} 🤝`;
+        mensajeFinal = `🤝 EMPATE TOTAL! ${rondasJugador} vs ${rondasEnemigo} 🤝`;
     }
 
-    const pFinal = document.createElement("p");
+     const pFinal = document.createElement("p");
     pFinal.innerHTML = mensajeFinal;
     pFinal.classList.add("mensaje-final");
     sectionMensajes.appendChild(pFinal);
+
     botonesAtaques.forEach(boton => boton.disabled = true);
     sectionReiniciar.style.display = "block";
 }
