@@ -18,6 +18,11 @@ const ataqueDelEnemigo = document.getElementById("ataqueDelEnemigo")
 const contenedorTarjetas = document.getElementById("contenedor-tarjetas")
 const contenedorAtaques = document.getElementById("contenedor-ataque")
 
+const sectionVerMapa = document.getElementById("ver-mapa")
+const mapa = document.getElementById("mapa")
+const botonIniciarPelea = document.getElementById("botonIniciarPelea")
+const anchoMaximoDelMapa = 600
+
 //CONFIGURACIÓN DEL JUEGO:
 const TIPOS_ATAQUE = [
     { nombre: "FUEGO", emoji: "🔥", id: "botonFuego" },
@@ -39,23 +44,68 @@ let opcionDeAnimales
 let botonesAtaques = []
 let nombreMascotaJugador = ""
 let nombreMascotaEnemigo = ""
+let mascotaJugadorObjeto
 let rondasJugador = 0
 let rondasEnemigo = 0
+let lienzo = mapa.getContext("2d")
+let intervalo
+let mapaBackground = new Image()
+mapaBackground.src = "./assets/mapaCombat.webp"
+let colisionOcurrida = false
+let alturaQueBuscamos
+let anchoDelMapa = window.innerWidth - 10
+
+if (anchoDelMapa > anchoMaximoDelMapa) {
+    anchoDelMapa = anchoMaximoDelMapa - 10
+    alturaQueBuscamos = anchoDelMapa * 700 / 800
+    mapa.width = anchoDelMapa
+    mapa.height = alturaQueBuscamos
+}
 
 //CLASES:
 class Animal { 
-    constructor(nombre, foto, vida) {
+    constructor(nombre, foto, vida, fotoMapa, x, y) {
         this.nombre = nombre
         this.foto = foto
         this.vida = vida
         this.ataques = []
+        this.x = x
+        this.y = y
+        this.ancho = 300
+        this.alto = 300
+        this.mapaFoto = new Image()
+        this.mapaFoto.src = fotoMapa
+        this.velocidadX = 0
+        this.velocidadY = 0
+
+        this.anchoColision = 30; 
+        this.altoColision = 30;
+        // Desplazamiento para centrar la colisión dentro del sprite
+        this.offsetX = (this.ancho - this.anchoColision) / 2;
+        this.offsetY = (this.alto - this.altoColision) / 2;
+    }
+
+    pintarAnimal() {
+    
+        lienzo.drawImage(
+            this.mapaFoto,
+            this.x,
+            this.y,
+            this.ancho, 
+            this.alto, 
+        )
     }
 }
 
 //INSTANCIAS DE ANIMALES:
-let neptuno = new Animal("Neptuno", "./assets/agua.webp", 3)
-let tierrudo = new Animal("Tierrudo", "./assets/tierra.webp", 3)
-let salamander = new Animal("Salamander", "./assets/fuego.webp", 3)
+let neptuno = new Animal("Neptuno", "./assets/agua.webp", 3, "./assets/cabezaNeptuno.webp")
+let tierrudo = new Animal("Tierrudo", "./assets/tierra.webp", 3, "./assets/cabezaTierrudo.webp")
+let salamander = new Animal("Salamander", "./assets/fuego.webp", 3, "./assets/cabezaSalamander.webp")
+
+//Cabezas Mascota Enemigo
+let neptunoEnemigo = new Animal("Neptuno", "./assets/agua.webp", 3, "./assets/cabezaNeptuno.webp", 124, 50)
+let tierrudoEnemigo = new Animal("Tierrudo", "./assets/tierra.webp", 3, "./assets/cabezaTierrudo.webp", 44, 111)
+let salamanderEnemigo = new Animal("Salamander", "./assets/fuego.webp", 3, "./assets/cabezaSalamander.webp", 287, 2)
 
 neptuno.ataques = [
     {id: "botonAgua"},  // 💧
@@ -99,7 +149,8 @@ function obtenerAtaqueAleatorio() {
 
 //FUNCIONES PRINCIPALES:
 function iniciarJuego() { 
-    sectionSeleccionarAtaque.style.display = "none" 
+    sectionSeleccionarAtaque.style.display = "none"
+    sectionVerMapa.style.display = "none" 
     sectionReiniciar.style.display = "none" 
     contenedorTarjetas.innerHTML = "" 
     
@@ -147,18 +198,61 @@ function seleccionarMascotaJugador() {
 
     setTimeout(() => {
         sectionSeleccionarMascota.style.display = "none" 
-        sectionSeleccionarAtaque.style.display = "flex"
+        sectionVerMapa.style.display = "flex"
+        document.body.classList.add("mapa-activo")  // Difuminar fondo
         sectionMensajes.innerHTML = "⚔️ ¡Prepárate para el combate! ⚔️"
     }, 200);
 
-    seleccionarMascotaEnemigo(); 
+    iniciarMapa()
 }
 
-function seleccionarMascotaEnemigo() { 
+function iniciarMapa() { 
 
-    let mascotaAleatoria = aleatorio(0, animales.length -1) 
-    nombreMascotaEnemigo = animales[mascotaAleatoria].nombre
-    spanMascotaEnemigo.innerHTML = nombreMascotaEnemigo
+    
+
+    mascotaJugadorObjeto = obtenerObjetoMascota(nombreMascotaJugador)
+
+    mascotaJugadorObjeto.x = 550;
+    mascotaJugadorObjeto.y = 450;
+
+    // Al hacer clic, ocultar mapa y mostrar pelea
+    botonIniciarPelea.addEventListener("click", () => {
+        ocultarMapa()
+        sectionSeleccionarAtaque.style.display = "flex"
+        sectionMensajes.innerHTML = "⚔️ ¡Prepárate para el combate! ⚔️"
+    })
+
+    // Agregar clase al body para difuminar el fondo
+    document.body.classList.add("mapa-activo")
+    
+    // Asegurar que el mapa se vea encima
+    sectionVerMapa.style.display = "flex"
+
+    mapaBackground.onload = function() {
+        // Una vez cargada, iniciar la animación y la pelea
+        iniciarPelea()
+    }
+    
+    // Si la imagen ya estaba en caché, el evento onload ya ocurrió
+    if (mapaBackground.complete) {
+        iniciarPelea()
+    }
+}
+
+function ocultarMapa() {
+    // Quitar difuminado
+    document.body.classList.remove("mapa-activo")
+    
+    // Ocultar sección del mapa
+    sectionVerMapa.style.display = "none"
+}
+
+
+function iniciarPelea() {        
+
+    intervalo = setInterval(pintarCanvas, 50)
+    window.addEventListener("keydown", teclaPresionada)
+    window.addEventListener("keyup", detenerMovimiento)
 }
 
 function mostrarAtaques(ataques) {
@@ -359,6 +453,141 @@ function compararAtaques() {
     sectionReiniciar.style.display = "block"
     ataqueJugador = []
     ataqueEnemigo = []
+}
+
+function pintarCanvas() {
+
+    mascotaJugadorObjeto.x += mascotaJugadorObjeto.velocidadX
+    mascotaJugadorObjeto.y += mascotaJugadorObjeto.velocidadY
+
+    // Límites
+    mascotaJugadorObjeto.x = Math.max(0, Math.min(mapa.width - mascotaJugadorObjeto.ancho, mascotaJugadorObjeto.x));
+    mascotaJugadorObjeto.y = Math.max(0, Math.min(mapa.height - mascotaJugadorObjeto.alto, mascotaJugadorObjeto.y));
+
+    lienzo.clearRect(0, 0, mapa.width, mapa.height);
+    lienzo.drawImage(
+        mapaBackground,
+        0,
+        0,
+        mapa.width,
+        mapa.height
+    )
+
+    mascotaJugadorObjeto.pintarAnimal()
+    neptunoEnemigo.pintarAnimal()
+    tierrudoEnemigo.pintarAnimal()
+    salamanderEnemigo.pintarAnimal()
+
+    if (mascotaJugadorObjeto.velocidadX !== 0 || mascotaJugadorObjeto.velocidadY !== 0) {
+        revisarColision(neptunoEnemigo)
+        revisarColision(tierrudoEnemigo)
+        revisarColision(salamanderEnemigo)
+    }
+}
+
+function moverArriba(){
+
+    mascotaJugadorObjeto.velocidadY = -5
+}
+function moverIzquierda(){
+
+    mascotaJugadorObjeto.velocidadX = -5
+}
+function moverAbajo(){
+
+    mascotaJugadorObjeto.velocidadY = 5
+}
+function moverDerecha(){
+
+    mascotaJugadorObjeto.velocidadX = 5
+}
+function detenerMovimiento(){
+
+    mascotaJugadorObjeto.velocidadX = 0
+    mascotaJugadorObjeto.velocidadY = 0
+}
+function teclaPresionada(event){
+    switch (event.key) {
+        case "ArrowUp":
+            moverArriba()
+            break
+        case "ArrowDown":
+            moverAbajo()
+            break
+        case "ArrowLeft":
+            moverIzquierda()
+            break
+        case "ArrowRight":
+            moverDerecha()
+            break
+        default:
+            break
+    }
+}
+
+function obtenerObjetoMascota() {
+
+    for (let i = 0; i < animales.length; i++) {
+        if (nombreMascotaJugador === animales[i].nombre) {
+            return animales[i]
+        }
+    }
+    return null
+}
+
+function revisarColision(enemigo){
+
+    const colisionEnemigo = {
+        x: enemigo.x + enemigo.offsetX,
+        y: enemigo.y + enemigo.offsetY,
+        ancho: enemigo.anchoColision,
+        alto: enemigo.altoColision
+    };
+    const colisionJugador = {
+        x: mascotaJugadorObjeto.x + mascotaJugadorObjeto.offsetX,
+        y: mascotaJugadorObjeto.y + mascotaJugadorObjeto.offsetY,
+        ancho: mascotaJugadorObjeto.anchoColision,
+        alto: mascotaJugadorObjeto.altoColision
+    };
+
+    const hayColision = !(colisionJugador.x + colisionJugador.ancho < colisionEnemigo.x ||
+        colisionJugador.x > colisionEnemigo.x + colisionEnemigo.ancho ||
+        colisionJugador.y + colisionJugador.alto < colisionEnemigo.y ||
+        colisionJugador.y > colisionEnemigo.y + colisionEnemigo.alto);
+
+    if (hayColision && !colisionOcurrida) {
+        colisionOcurrida = true;
+        console.log("¡Colisión con", enemigo.nombre);
+        
+        // ✅ Aquí es donde se inicia el combate con este enemigo específico
+        iniciarCombateContra(enemigo);
+    } else if (!hayColision) {
+        colisionOcurrida = false;
+    }
+}
+
+function iniciarCombateContra(enemigo) {
+    // Detener el movimiento y la animación
+    clearInterval(intervalo);
+    window.removeEventListener("keydown", teclaPresionada);
+    window.removeEventListener("keyup", detenerMovimiento);
+    
+    // Ocultar mapa y quitar difuminado
+    ocultarMapa();  // ya definida (quita clase y display none)
+    
+    // Asignar la mascota enemiga con la que colisionó
+    nombreMascotaEnemigo = enemigo.nombre;
+    spanMascotaEnemigo.innerHTML = nombreMascotaEnemigo;
+    
+    // Mostrar la sección de ataque
+    sectionSeleccionarAtaque.style.display = "flex";
+    
+    // Limpiar mensajes anteriores (opcional)
+    sectionMensajes.innerHTML = "⚔️ ¡Prepárate para el combate! ⚔️";
+    
+    // Aquí podrías reiniciar los arrays de ataques si es necesario
+    ataqueJugador = [];
+    ataqueEnemigo = [];
 }
 
 function reiniciarJuego() { 

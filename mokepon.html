@@ -20,6 +20,24 @@
             <button id="botonMascota" class="animarBoton">Continuar</button>
         </section>
 
+        <section id="ver-mapa">
+
+            <h1 id="tituloH1" class="tituloPrincipal">Mapa de Animal Combat</h1>
+            <canvas id="mapa"></canvas> 
+
+            <div class="contenedor-botonesCanva">
+                
+                <button id="botonIniciarPelea" class="animarBoton" style="margin-top: 15px;">Iniciar pelea</button>
+
+                <div class="grid-direccion">
+                    <button class="arriba" onmouseup="detenerMovimiento()" onmousedown="moverArriba()">⬆️</button>
+                    <button class="izquierda" onmouseup="detenerMovimiento()" onmousedown="moverIzquierda()">⬅️</button>
+                    <button class="derecha" onmouseup="detenerMovimiento()" onmousedown="moverDerecha()">➡️</button>
+                    <button class="abajo" onmouseup="detenerMovimiento()" onmousedown="moverAbajo()">⬇️</button>
+                </div>
+            </div>
+        </section>
+
         <section id="seleccionar-ataque" class="contenedor-ataques">
 
             <h1 id="tituloH1" class="tituloPrincipal">Animal Combat</h1>
