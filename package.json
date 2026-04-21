@@ -1,0 +1,24 @@
+{
+  "name": "ataque-de-animales",
+  "version": "1.0.0",
+  "description": "juego de ataque de animales - Practicas",
+  "homepage": "https://github.com/ColombiTcoinLA/ataque-de-animales#readme",
+  "bugs": {
+    "url": "https://github.com/ColombiTcoinLA/ataque-de-animales/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ColombiTcoinLA/ataque-de-animales.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  }
+}

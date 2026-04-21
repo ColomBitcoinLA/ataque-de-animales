@@ -54,6 +54,7 @@ mapaBackground.src = "./assets/mapaCombat.webp"
 let colisionOcurrida = false
 let alturaQueBuscamos
 let anchoDelMapa = window.innerWidth - 10
+let jugadorId = ""
 
 if (anchoDelMapa > anchoMaximoDelMapa) {
     anchoDelMapa = anchoMaximoDelMapa - 10
@@ -77,10 +78,8 @@ class Animal {
         this.mapaFoto.src = fotoMapa
         this.velocidadX = 0
         this.velocidadY = 0
-
         this.anchoColision = 30; 
         this.altoColision = 30;
-        // Desplazamiento para centrar la colisión dentro del sprite
         this.offsetX = (this.ancho - this.anchoColision) / 2;
         this.offsetY = (this.alto - this.altoColision) / 2;
     }
@@ -166,9 +165,20 @@ function iniciarJuego() {
         contenedorTarjetas.innerHTML += opcionDeAnimales
     })
     botonMascotaJugador.addEventListener("click", seleccionarMascotaJugador) 
-    botonReiniciar.addEventListener("click", reiniciarJuego) 
+    botonReiniciar.addEventListener("click", reiniciarJuego)
+
+    unirseAlJuego()
 }
-iniciarJuego(); 
+iniciarJuego();
+
+function unirseAlJuego() {
+    fetch("http://localhost:8080/unirse")
+    .then(response => response.text())
+    .then(data => {
+        console.log(data)
+        jugadorId = data
+    })
+}
 
 function seleccionarMascotaJugador() { 
 
@@ -195,6 +205,8 @@ function seleccionarMascotaJugador() {
     if (mascota) {
         mostrarAtaques(mascota.ataques)
     }
+    
+    seleccionarMascota(nombreMascotaJugador)
 
     setTimeout(() => {
         sectionSeleccionarMascota.style.display = "none" 
@@ -206,44 +218,47 @@ function seleccionarMascotaJugador() {
     iniciarMapa()
 }
 
+function seleccionarMascota(nombreAnimal) {
+
+    fetch(`http://localhost:8080/animalCombat/${jugadorId}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            animal: nombreAnimal
+        })
+    })
+}
+
 function iniciarMapa() { 
 
-    
-
     mascotaJugadorObjeto = obtenerObjetoMascota(nombreMascotaJugador)
-
     mascotaJugadorObjeto.x = 550;
     mascotaJugadorObjeto.y = 450;
 
-    // Al hacer clic, ocultar mapa y mostrar pelea
     botonIniciarPelea.addEventListener("click", () => {
         ocultarMapa()
         sectionSeleccionarAtaque.style.display = "flex"
         sectionMensajes.innerHTML = "⚔️ ¡Prepárate para el combate! ⚔️"
     })
 
-    // Agregar clase al body para difuminar el fondo
     document.body.classList.add("mapa-activo")
-    
-    // Asegurar que el mapa se vea encima
     sectionVerMapa.style.display = "flex"
 
     mapaBackground.onload = function() {
-        // Una vez cargada, iniciar la animación y la pelea
+
         iniciarPelea()
     }
     
-    // Si la imagen ya estaba en caché, el evento onload ya ocurrió
     if (mapaBackground.complete) {
         iniciarPelea()
     }
 }
 
 function ocultarMapa() {
-    // Quitar difuminado
+
     document.body.classList.remove("mapa-activo")
-    
-    // Ocultar sección del mapa
     sectionVerMapa.style.display = "none"
 }
 
@@ -460,7 +475,6 @@ function pintarCanvas() {
     mascotaJugadorObjeto.x += mascotaJugadorObjeto.velocidadX
     mascotaJugadorObjeto.y += mascotaJugadorObjeto.velocidadY
 
-    // Límites
     mascotaJugadorObjeto.x = Math.max(0, Math.min(mapa.width - mascotaJugadorObjeto.ancho, mascotaJugadorObjeto.x));
     mascotaJugadorObjeto.y = Math.max(0, Math.min(mapa.height - mascotaJugadorObjeto.alto, mascotaJugadorObjeto.y));
 
@@ -559,7 +573,6 @@ function revisarColision(enemigo){
         colisionOcurrida = true;
         console.log("¡Colisión con", enemigo.nombre);
         
-        // ✅ Aquí es donde se inicia el combate con este enemigo específico
         iniciarCombateContra(enemigo);
     } else if (!hayColision) {
         colisionOcurrida = false;
@@ -567,25 +580,19 @@ function revisarColision(enemigo){
 }
 
 function iniciarCombateContra(enemigo) {
-    // Detener el movimiento y la animación
+    
     clearInterval(intervalo);
     window.removeEventListener("keydown", teclaPresionada);
     window.removeEventListener("keyup", detenerMovimiento);
     
-    // Ocultar mapa y quitar difuminado
-    ocultarMapa();  // ya definida (quita clase y display none)
+    ocultarMapa(); 
     
-    // Asignar la mascota enemiga con la que colisionó
     nombreMascotaEnemigo = enemigo.nombre;
     spanMascotaEnemigo.innerHTML = nombreMascotaEnemigo;
-    
-    // Mostrar la sección de ataque
+   
     sectionSeleccionarAtaque.style.display = "flex";
-    
-    // Limpiar mensajes anteriores (opcional)
     sectionMensajes.innerHTML = "⚔️ ¡Prepárate para el combate! ⚔️";
     
-    // Aquí podrías reiniciar los arrays de ataques si es necesario
     ataqueJugador = [];
     ataqueEnemigo = [];
 }

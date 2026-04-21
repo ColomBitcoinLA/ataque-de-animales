@@ -467,10 +467,10 @@ body.mapa-activo .contenedor-ataques {
             button {
                 width: 100%;
                 height: 100%;
-                font-size: 1.2rem;    /* tamaño de flecha más pequeño */
+                font-size: 1.2rem;   
                 padding: 0;
                 margin: 0;
-                min-width: unset;      /* elimina el min-width anterior */
+                min-width: unset;    
             }
 
             .arriba {
