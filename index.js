@@ -14,6 +14,11 @@ class Jugador {
     asignarMascota(mascota) {
         this.mascota = mascota
     }
+
+    actualizarPosicion(x, y) {
+        this.x = x
+        this.y = y
+    }
 }
 
 class Mascota {
@@ -23,6 +28,7 @@ class Mascota {
 }
 
 app.use(express.static("public"))
+
 app.get("/unirse", (req, res) => {
 
     const id = `${Math.random()}`
@@ -46,9 +52,18 @@ app.post("/animalCombat/:jugadorId", (req, res) => {
     }
 
     console.log(jugadores)
-    console.log(jugadorId)
-
     res.end()
+})
+
+app.post("/animalCombat/posicion/:jugadorId", (req, res) => {
+    const jugadorId = req.params.jugadorId;
+    const { x, y } = req.body;
+    const jugadorIndex = jugadores.findIndex(j => j.id === jugadorId);
+    if (jugadorIndex >= 0) {
+        jugadores[jugadorIndex].actualizarPosicion(x, y);
+    }
+
+    res.end();
 })
 
 app.listen(8080, () => {

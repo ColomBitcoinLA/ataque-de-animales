@@ -11,7 +11,6 @@ const spanMascotaJugador = document.getElementById("mascota-jugador")
 const spanMascotaEnemigo = document.getElementById("mascota-enemigo")
 const spanVidasJugador = document.getElementById("vidas-jugador") 
 const spanVidasEnemigo = document.getElementById("vidas-enemigo") 
-
 const ataqueDelJugador = document.getElementById("ataqueDelJugador") 
 const ataqueDelEnemigo = document.getElementById("ataqueDelEnemigo")
 
@@ -175,7 +174,6 @@ function unirseAlJuego() {
     fetch("http://localhost:8080/unirse")
     .then(response => response.text())
     .then(data => {
-        console.log(data)
         jugadorId = data
     })
 }
@@ -488,6 +486,9 @@ function pintarCanvas() {
     )
 
     mascotaJugadorObjeto.pintarAnimal()
+
+    enviarPosicion(mascotaJugadorObjeto.x, mascotaJugadorObjeto.y)
+
     neptunoEnemigo.pintarAnimal()
     tierrudoEnemigo.pintarAnimal()
     salamanderEnemigo.pintarAnimal()
@@ -497,6 +498,16 @@ function pintarCanvas() {
         revisarColision(tierrudoEnemigo)
         revisarColision(salamanderEnemigo)
     }
+}
+
+function enviarPosicion(x, y) {
+    fetch(`http://localhost:8080/animalCombat/posicion/${jugadorId}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ x, y })
+    });
 }
 
 function moverArriba(){
@@ -571,7 +582,6 @@ function revisarColision(enemigo){
 
     if (hayColision && !colisionOcurrida) {
         colisionOcurrida = true;
-        console.log("¡Colisión con", enemigo.nombre);
         
         iniciarCombateContra(enemigo);
     } else if (!hayColision) {
