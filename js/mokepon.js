@@ -34,6 +34,13 @@ const FUERZA_ATAQUES = {
     "AGUA": "FUEGO",    
     "TIERRA": "AGUA"    
 }
+const neptunoAtaques = [
+    {id: "botonAgua"},  // 💧
+    {id: "botonAgua"},  // 💧
+    {id: "botonAgua"},  // 💧
+    {id: "botonTierra"}, // 🌱
+    {id: "botonFuego"},   // 🔥
+]
 
 //VARIABLES GLOBALES
 let animales = []
@@ -105,13 +112,9 @@ let neptunoEnemigo = new Animal("Neptuno", "./assets/agua.webp", 3, "./assets/ca
 let tierrudoEnemigo = new Animal("Tierrudo", "./assets/tierra.webp", 3, "./assets/cabezaTierrudo.webp", 44, 111)
 let salamanderEnemigo = new Animal("Salamander", "./assets/fuego.webp", 3, "./assets/cabezaSalamander.webp", 287, 2)
 
-neptuno.ataques = [
-    {id: "botonAgua"},  // 💧
-    {id: "botonAgua"},  // 💧
-    {id: "botonAgua"},  // 💧
-    {id: "botonTierra"}, // 🌱
-    {id: "botonFuego"},   // 🔥
-]
+neptuno.ataques = neptunoAtaques;
+neptunoEnemigo.ataques = neptunoAtaques;
+
 tierrudo.ataques = [
     {id: "botonTierra"}, // 🌱
     {id: "botonTierra"}, // 🌱
@@ -259,7 +262,6 @@ function ocultarMapa() {
     document.body.classList.remove("mapa-activo")
     sectionVerMapa.style.display = "none"
 }
-
 
 function iniciarPelea() {        
 
@@ -503,11 +505,23 @@ function pintarCanvas() {
 function enviarPosicion(x, y) {
     fetch(`http://localhost:8080/animalCombat/posicion/${jugadorId}`, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ x, y })
-    });
+    })
+    .then(response => response.json())
+    .then(data => {
+        const enemigos = data.enemigos;
+        enemigos.forEach(enemigo => {
+            if (enemigo.mascota && enemigo.mascota.nombre) {
+                const enemigoObjeto = obtenerObjetoMascota(enemigo.mascota.nombre);
+                if (enemigoObjeto) {
+                    enemigoObjeto.x = enemigo.x;
+                    enemigoObjeto.y = enemigo.y;
+                }
+            }
+        });
+    })
+    .catch(error => console.error("Error en enviarPosicion:", error));
 }
 
 function moverArriba(){
@@ -532,6 +546,7 @@ function detenerMovimiento(){
     mascotaJugadorObjeto.velocidadY = 0
 }
 function teclaPresionada(event){
+    
     switch (event.key) {
         case "ArrowUp":
             moverArriba()
@@ -550,14 +565,13 @@ function teclaPresionada(event){
     }
 }
 
-function obtenerObjetoMascota() {
-
+function obtenerObjetoMascota(nombreMascota) {
     for (let i = 0; i < animales.length; i++) {
-        if (nombreMascotaJugador === animales[i].nombre) {
-            return animales[i]
+        if (animales[i].nombre === nombreMascota) {
+            return animales[i];
         }
     }
-    return null
+    return null;
 }
 
 function revisarColision(enemigo){
