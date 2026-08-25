@@ -8,6 +8,8 @@
     </head>
     <body>
         
+        <button id="mute-toggle" class="mute-btn" title="Silenciar sonido">🔊</button>
+
         <section id="seleccionar-mascota" class="contenedor-mascotas">
 
             <h1 id="tituloH1" class="tituloPrincipal">Animal Combat</h1>
@@ -43,6 +45,11 @@
             <h1 class="tituloPrincipal">Animal Combat</h1>
             <h2 class="subtitulo">Elige tu ataque:</h2>
 
+            <div id="ap-container" class="ap-container">
+                <span class="ap-label">Energía:</span>
+                <div id="ap-display" class="ap-display"></div>
+            </div>
+
             <div id="contenedor-ataque" class="tarjetas-ataques">
                 
             </div>
@@ -57,17 +64,29 @@
 
             <div class="contenedor-resultados">
                 <div class="contenedor-jugador">
-                    <span id="vidas-jugador">0</span>
                     <span id="mascota-jugador"></span>
+                    <div id="hp-bar-jugador" class="hp-bar">
+                        <div id="hp-bar-fill-jugador" class="hp-bar-fill hp-high"></div>
+                        <span id="hp-text-jugador" class="hp-text">100/100</span>
+                    </div>
+                    <span id="vidas-jugador" class="rounds-score">0</span>
+                    <span id="status-jugador" class="status-badge" style="display:none"></span>
                     <div id="ataqueDelJugador"></div>
                 </div>
 
                 <div class="contenedor-enemigo">
-                    <span id="vidas-enemigo">0</span>
                     <span id="mascota-enemigo"></span>
+                    <div id="hp-bar-enemigo" class="hp-bar">
+                        <div id="hp-bar-fill-enemigo" class="hp-bar-fill hp-high"></div>
+                        <span id="hp-text-enemigo" class="hp-text">100/100</span>
+                    </div>
+                    <span id="vidas-enemigo" class="rounds-score">0</span>
+                    <span id="status-enemigo" class="status-badge" style="display:none"></span>
                     <div id="ataqueDelEnemigo"></div>
                 </div>
             </div>
+
+            <canvas id="combat-particles-canvas" class="combat-particles-canvas"></canvas>
         </section>
 
         <script type="module" src="./js/main.js"></script>

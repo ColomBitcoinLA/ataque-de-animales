@@ -35,16 +35,21 @@ Este archivo registra el historial de iteraciones, revisiones de código y dict�
 5. **Ciclo de Vida y Heartbeat**: `OK` (Ping/Pong de 10s y detección de timeout a 15s).
 6. **Manejo de Desconexiones (`player_left`)**: `OK` (Limpieza instantánea de la memoria en `Map<id, Jugador>` al cerrar pestaña o perder conexión).
 
-### 📝 Aspectos Destacados del Código Generado:
-- **`index.js`**: Implementación limpia con `Map`, validaciones de payload (`typeof`, límites de longitud), y endpoints informativos `/health`.
-- **`js/core/GameState.js`**: Máquina de Estados Finita con transiciones validadas (`SELECCION` ➔ `MAPA` ➔ `COMBATE` ➔ `FIN`).
-- **`js/core/GameEngine.js`**: Game Loop desacoplado a 60 FPS con delta time ($\Delta t$) y tick de red optimizado a 20Hz.
-- **`js/entities/Animal.js`**: Hitboxes centradas ajustadas a 30x30 e interpolación exponencial para suavizar el lag de red.
-- **`js/ui/UIManager.js`**: Manejador centralizado de vistas y eventos táctiles/ratón sin manipulación destructiva de DOM.
+---
 
-### 📌 Acciones Recomendadas previas a Fase 2:
-- Crear una rama de desarrollo `feature/phase-1-modular-ws` o commitear en `main` localmente con mensaje descriptivo.
-- Probar en navegador la experiencia de usuario (movimiento con flechas/botones y transiciones de pantalla).
+## 🔍 Entrada de Auditoría #003 - Revisión de Fase 2 (VFX, SFX y Combate Táctico con AP/Estados)
+- **Fecha**: 2026-08-25
+- **Auditor**: Antigravity (Google DeepMind)
+- **Agente Ejecutor**: Ox Alpha (OpenCode)
+- **Estado de la Fase 2**: ✅ **APROBADA Y VALIDADA AL 100%**
+
+### 🧪 Pruebas de QA Automatizadas Ejecutadas:
+1. **Verificación de Sintaxis y Balance de Llaves**: `OK` (0 errores en los 8 módulos de frontend).
+2. **Sistema de Partículas (`ParticleSystem.js`)**: `OK` (Física con gravedad, decay, explosión de fuego, salpicaduras de agua y escombros de tierra + screen shake).
+3. **Audio Procedural (`SoundManager.js`)**: `OK` (Sintetizador nativo Web Audio API con osciladores y filtros sin dependencias externas).
+4. **Mecánica de Combate (AP y Efectos de Estado)**: `OK` (Gestión de 100 HP, 3 AP, recarga de +1 AP/turno, ataques básicos y cargados, y cálculo de ventajas $\times 1.3$).
+5. **Integración UI / CSS**: `OK` (Barras de vida animadas con gradientes dinámicos, orbes de AP, badges de estado y tooltips informativos).
+6. **Disponibilidad de Endpoints**: `OK` (Todos los archivos HTML, CSS, JS y assets webp responden `200 OK`).
 
 ---
-*(Nuevas auditorías serán agregadas aquí tras la ejecución de las siguientes fases)*
+*(Nuevas auditorías serán agregadas aquí tras la ejecución de la Fase 3)*

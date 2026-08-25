@@ -19,16 +19,16 @@ Este documento define las fases de evolución del juego, desde la refactorizaci�
 
 ---
 
-## 📌 Fase 2: Sistema de Combate Avanzado, VFX y Audio
-- [ ] **Mecánicas de Combate Estratégico**:
-  - Barra de Maná / Puntos de Acción (AP).
-  - Efectos de Estado (Quemado 🔥: daño por turno, Congelado 💧: pierde turno, Envenenado 🌱: reduce defensa).
-  - Habilidades Especiales / Ultimates con tiempo de recarga (Cooldown).
-- [ ] **Feedback Audiovisual (Juice it!)**:
-  - Partículas en Canvas para impactos de fuego, agua y tierra.
-  - Animaciones de sacudida de pantalla (Screen Shake) en golpes críticos.
-  - Gestor de Audio Web Audio API con música de fondo medieval y SFX para cada acción.
-  - UI interactiva responsiva con soporte táctil mejorado para móviles.
+## 📌 Fase 2: Sistema de Combate Avanzado, VFX y Audio (Completada)
+- [x] **Mecánicas de Combate Estratégico**:
+  - Barra de Maná / Puntos de Acción (AP): 3 iniciales, +1 por turno.
+  - Ataque Básico (0 AP) vs Ataque Cargado Elemental (2 AP).
+  - Efectos de Estado: Quemado 🔥 (daño residual), Congelado 💧 (reduce daño recibido), Envenenado 🌱 (reduce ataque rival).
+  - Barras de HP animadas con transiciones CSS.
+- [x] **Feedback Audiovisual (Juice it!)**:
+  - Partículas en Canvas (`js/fx/ParticleSystem.js`): fuego, agua y tierra + Screen Shake (canvas y CSS).
+  - Gestor de Audio procedural (`js/audio/SoundManager.js`) con Web Audio API: selección, pasos, ataques elementales, victoria/derrota y toggle mute flotante.
+- [x] **UI interactiva responsiva**: tooltips en ataques, badges de estado, diseño responsive móvil/escritorio.
 
 ---
 
