@@ -1,9 +1,24 @@
 /** @typedef {'SELECCION' | 'MAPA' | 'COMBATE' | 'FIN'} GamePhase */
 
 const TIPOS_ATAQUE = [
-  { nombre: "FUEGO", emoji: "🔥", id: "botonFuego", tooltip: "Fuego: supera Tierra. Cargado: Quema (daño residual)." },
-  { nombre: "AGUA", emoji: "💧", id: "botonAgua", tooltip: "Agua: supera Fuego. Cargado: Congela (reduce daño)." },
-  { nombre: "TIERRA", emoji: "🌱", id: "botonTierra", tooltip: "Tierra: supera Agua. Cargado: Envenena (reduce ataque rival)." },
+  { 
+    nombre: "FUEGO", 
+    emoji: "🔥", 
+    id: "botonFuego", 
+    tooltip: "FUEGO: Fuerte contra TIERRA 🌱\nCargado (2 AP): Aplica QUEMADURA 🔥 (daño por turno)" 
+  },
+  { 
+    nombre: "AGUA", 
+    emoji: "💧", 
+    id: "botonAgua", 
+    tooltip: "AGUA: Fuerte contra FUEGO 🔥\nCargado (2 AP): Aplica CONGELACIÓN 💧 (reduce daño recibido 25%)" 
+  },
+  { 
+    nombre: "TIERRA", 
+    emoji: "🌱", 
+    id: "botonTierra", 
+    tooltip: "TIERRA: Fuerte contra AGUA 💧\nCargado (2 AP): Aplica ENVENENAMIENTO 🌱 (reduce ataque rival)" 
+  },
 ];
 
 const FUERZA_ATAQUES = {
@@ -13,9 +28,9 @@ const FUERZA_ATAQUES = {
 };
 
 const STATUS_EFFECTS = {
-  QUEMADO: { emoji: "🔥", label: "Quemado", color: "#ff4400", desc: "Daño residual por turno" },
-  CONGELADO: { emoji: "💧", label: "Congelado", color: "#44aaff", desc: "Reduce daño recibido 25%" },
-  ENVENENADO: { emoji: "🌱", label: "Envenenado", color: "#88cc44", desc: "Reduce efectividad del ataque rival" },
+  QUEMADO: { emoji: "🔥", label: "Quemado", color: "#ff5722", desc: "Daño residual de 8 HP por turno" },
+  CONGELADO: { emoji: "💧", label: "Congelado", color: "#00bcd4", desc: "Reduce daño recibido un 25%" },
+  ENVENENADO: { emoji: "🌱", label: "Envenenado", color: "#8bc34a", desc: "Reduce la efectividad del ataque rival" },
   NINGUNO: { emoji: "", label: "", color: "transparent", desc: "" },
 };
 
@@ -68,7 +83,8 @@ export class UIManager {
     /** @type {HTMLButtonElement[]} */
     this.botonesAtaques = [];
 
-    this._onChargeAttack = null;
+    this._onMoveStart = null;
+    this._onMoveEnd = null;
 
     this._bindMovementButtons();
   }
@@ -161,14 +177,34 @@ export class UIManager {
   renderPetCards(animales) {
     if (!this.contenedorTarjetas) return;
     this.contenedorTarjetas.innerHTML = "";
+
+    const elementMap = {
+      Neptuno: { icon: "💧", tipo: "Agua", cssClass: "elem-agua" },
+      Tierrudo: { icon: "🌱", tipo: "Tierra", cssClass: "elem-tierra" },
+      Salamander: { icon: "🔥", tipo: "Fuego", cssClass: "elem-fuego" },
+    };
+
     for (const animal of animales) {
+      const elemInfo = elementMap[animal.nombre] || { icon: "🐾", tipo: "Normal", cssClass: "" };
       const label = document.createElement("label");
-      label.className = "tarjeta-animal";
+      label.className = `tarjeta-animal ${elemInfo.cssClass}`;
       label.innerHTML = `
-        <p>${animal.nombre}</p>
-        <img src="${animal.foto}" alt="${animal.nombre}"/>
+        <div class="tarjeta-header">
+          <span class="nombre-animal">${animal.nombre}</span>
+          <span class="tipo-badge">${elemInfo.icon} ${elemInfo.tipo}</span>
+        </div>
+        <div class="tarjeta-img-wrapper">
+          <img src="${animal.foto}" alt="${animal.nombre}"/>
+        </div>
         <input type="radio" name="mascota" value="${animal.nombre}" id="${animal.nombre}"/>
       `;
+
+      // Selección visual dinámica al hacer click
+      label.addEventListener("click", () => {
+        document.querySelectorAll(".tarjeta-animal").forEach(c => c.classList.remove("seleccionada"));
+        label.classList.add("seleccionada");
+      });
+
       this.contenedorTarjetas.appendChild(label);
     }
   }
@@ -202,13 +238,14 @@ export class UIManager {
       const wrapper = document.createElement("div");
       wrapper.classList.add("attack-btn-group");
 
-      // Botón básico
+      // Botón básico (0 AP)
       const btnBasic = document.createElement("button");
-      btnBasic.textContent = info.emoji;
+      btnBasic.type = "button";
       btnBasic.id = info.id;
-      btnBasic.classList.add("botonAtaque");
-      btnBasic.title = info.tooltip + " (Básico: 0 AP)";
-      btnBasic.dataset.tooltip = info.tooltip + " | Costo: 0 AP";
+      btnBasic.classList.add("botonAtaque", `btn-${info.nombre.toLowerCase()}`);
+      btnBasic.innerHTML = `<span class="btn-icon">${info.emoji}</span> <span class="btn-label">Básico (0 AP)</span>`;
+      btnBasic.setAttribute("data-tooltip", `${info.nombre} Básico | Costo: 0 AP\n${info.tooltip.split('\n')[0]}`);
+      
       btnBasic.addEventListener("click", () => {
         if (btnBasic.disabled) return;
         btnBasic.disabled = true;
@@ -218,12 +255,13 @@ export class UIManager {
         onAttack(info.nombre, info.emoji, false);
       });
 
-      // Botón cargado
+      // Botón cargado (2 AP)
       const btnCharged = document.createElement("button");
-      btnCharged.textContent = info.emoji + "⚡";
-      btnCharged.classList.add("botonAtaque", "boton-cargado");
-      btnCharged.title = `${info.tooltip} (Cargado: ${chargedCost} AP)`;
-      btnCharged.dataset.tooltip = `${info.tooltip} | Cargado: ${chargedCost} AP`;
+      btnCharged.type = "button";
+      btnCharged.classList.add("botonAtaque", "boton-cargado", `btn-${info.nombre.toLowerCase()}-cargado`);
+      btnCharged.innerHTML = `<span class="btn-icon">${info.emoji}⚡</span> <span class="btn-label">Cargado (${chargedCost} AP)</span>`;
+      btnCharged.setAttribute("data-tooltip", `⚡ ${info.nombre} CARGADO | Costo: ${chargedCost} AP\n${info.tooltip.split('\n')[1] || info.tooltip}`);
+      
       btnCharged.addEventListener("click", () => {
         if (btnCharged.disabled) return;
         btnCharged.disabled = true;
@@ -253,7 +291,7 @@ export class UIManager {
       const btn = this.botonesAtaques[i];
       if (btn.classList.contains("boton-cargado")) {
         btn.disabled = ap < 2;
-        btn.style.opacity = btn.disabled ? "0.4" : "1";
+        btn.style.opacity = btn.disabled ? "0.45" : "1";
       } else {
         btn.disabled = false;
         btn.style.opacity = "1";
@@ -273,14 +311,17 @@ export class UIManager {
       const orb = document.createElement("span");
       orb.classList.add("ap-orb");
       orb.textContent = "⚡";
-      if (i < current) orb.classList.add("ap-active");
-      else orb.classList.add("ap-empty");
+      if (i < current) {
+        orb.classList.add("ap-active");
+      } else {
+        orb.classList.add("ap-empty");
+      }
       this.apDisplay.appendChild(orb);
     }
   }
 
   /**
-   * Actualiza barra de HP.
+   * Actualiza barra de HP con porcentaje y animación suave.
    * @param {'jugador'|'enemigo'} side
    * @param {number} hp
    * @param {number} maxHp
@@ -292,10 +333,10 @@ export class UIManager {
     if (!fill || !text) return;
     const pct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
     fill.style.width = `${pct}%`;
-    text.textContent = `${hp}/${maxHp}`;
+    text.textContent = `${hp} / ${maxHp} HP`;
     fill.classList.remove("hp-high", "hp-mid", "hp-low");
-    if (pct > 60) fill.classList.add("hp-high");
-    else if (pct > 30) fill.classList.add("hp-mid");
+    if (pct > 55) fill.classList.add("hp-high");
+    else if (pct > 25) fill.classList.add("hp-mid");
     else fill.classList.add("hp-low");
   }
 
@@ -314,7 +355,7 @@ export class UIManager {
     }
     badge.style.display = "inline-flex";
     badge.innerHTML = `${info.emoji} ${info.label}`;
-    badge.title = info.desc;
+    badge.setAttribute("title", info.desc);
     badge.style.backgroundColor = info.color + "33";
     badge.style.borderColor = info.color;
   }
@@ -336,6 +377,7 @@ export class UIManager {
     const p = document.createElement("p");
     p.innerHTML = html;
     this.sectionMensajes.appendChild(p);
+    this.sectionMensajes.scrollTop = this.sectionMensajes.scrollHeight;
   }
 
   clearBattleLists() {
@@ -352,11 +394,12 @@ export class UIManager {
   addAttackLine(side, n, emoji, extraClass = "") {
     const container = side === "jugador" ? this.ataqueDelJugador : this.ataqueDelEnemigo;
     if (!container) return;
-    const p = document.createElement("p");
+    const p = document.createElement("div");
     p.classList.add("ataque-individual");
     if (extraClass) p.classList.add(extraClass);
-    p.innerHTML = `⚔️ Ataque ${n}: ${emoji}`;
+    p.innerHTML = `<span class="atk-badge">R${n}</span> <span class="atk-emoji">${emoji}</span> <span class="atk-text">Ataque ${n}</span>`;
     container.appendChild(p);
+    container.scrollTop = container.scrollHeight;
   }
 
   /**
@@ -368,20 +411,21 @@ export class UIManager {
   addChargedAttackLine(side, n, emoji, statusLabel) {
     const container = side === "jugador" ? this.ataqueDelJugador : this.ataqueDelEnemigo;
     if (!container) return;
-    const p = document.createElement("p");
+    const p = document.createElement("div");
     p.classList.add("ataque-individual", "ataque-cargado-line");
-    p.innerHTML = `⚡ ${emoji} Ataque ${n}: CARGADO → ${statusLabel}`;
+    p.innerHTML = `<span class="atk-badge">⚡ R${n}</span> <span class="atk-emoji">${emoji}</span> <span class="atk-text">CARGADO (${statusLabel})</span>`;
     container.appendChild(p);
+    container.scrollTop = container.scrollHeight;
   }
 
   setScores(j, e) {
-    if (this.spanVidasJugador) this.spanVidasJugador.innerHTML = String(j);
-    if (this.spanVidasEnemigo) this.spanVidasEnemigo.innerHTML = String(e);
+    if (this.spanVidasJugador) this.spanVidasJugador.innerHTML = `${j} rondas ganadas`;
+    if (this.spanVidasEnemigo) this.spanVidasEnemigo.innerHTML = `${e} rondas ganadas`;
   }
 
   setPetNames(jugador, enemigo) {
-    if (this.spanMascotaJugador) this.spanMascotaJugador.innerHTML = jugador || "";
-    if (this.spanMascotaEnemigo) this.spanMascotaEnemigo.innerHTML = enemigo || "";
+    if (this.spanMascotaJugador) this.spanMascotaJugador.innerHTML = jugador || "Jugador";
+    if (this.spanMascotaEnemigo) this.spanMascotaEnemigo.innerHTML = enemigo || "Enemigo";
   }
 
   /**
@@ -391,8 +435,8 @@ export class UIManager {
    * @param {number} [aspectH=700]
    */
   resizeCanvas(maxWidth = 600, aspectW = 800, aspectH = 700) {
-    let width = Math.min(window.innerWidth - 20, maxWidth);
-    if (width < 200) width = 200;
+    let width = Math.min(window.innerWidth - 40, maxWidth);
+    if (width < 280) width = 280;
     const height = Math.round((width * aspectH) / aspectW);
     this.mapa.width = width;
     this.mapa.height = height;
@@ -409,7 +453,6 @@ export class UIManager {
 
   /**
    * Configura el canvas overlay para partículas de combate.
-   * Se dimensiona para cubrir la sección de combate.
    */
   setupCombatOverlay() {
     if (!this.combatCanvasOverlay) return;
