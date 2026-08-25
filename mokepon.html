@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,7 +22,7 @@
 
         <section id="ver-mapa">
 
-            <h1 id="tituloH1" class="tituloPrincipal">Mapa de Animal Combat</h1>
+            <h1 class="tituloPrincipal">Mapa de Animal Combat</h1>
             <canvas id="mapa"></canvas> 
 
             <div class="contenedor-botonesCanva">
@@ -30,17 +30,17 @@
                 <button id="botonIniciarPelea" class="animarBoton" style="margin-top: 15px;">Iniciar pelea</button>
 
                 <div class="grid-direccion">
-                    <button class="arriba" onmouseup="detenerMovimiento()" onmousedown="moverArriba()">⬆️</button>
-                    <button class="izquierda" onmouseup="detenerMovimiento()" onmousedown="moverIzquierda()">⬅️</button>
-                    <button class="derecha" onmouseup="detenerMovimiento()" onmousedown="moverDerecha()">➡️</button>
-                    <button class="abajo" onmouseup="detenerMovimiento()" onmousedown="moverAbajo()">⬇️</button>
+                    <button type="button" class="arriba">⬆️</button>
+                    <button type="button" class="izquierda">⬅️</button>
+                    <button type="button" class="derecha">➡️</button>
+                    <button type="button" class="abajo">⬇️</button>
                 </div>
             </div>
         </section>
 
         <section id="seleccionar-ataque" class="contenedor-ataques">
 
-            <h1 id="tituloH1" class="tituloPrincipal">Animal Combat</h1>
+            <h1 class="tituloPrincipal">Animal Combat</h1>
             <h2 class="subtitulo">Elige tu ataque:</h2>
 
             <div id="contenedor-ataque" class="tarjetas-ataques">
@@ -57,19 +57,19 @@
 
             <div class="contenedor-resultados">
                 <div class="contenedor-jugador">
-                    <span id="vidas-jugador">3</span>
+                    <span id="vidas-jugador">0</span>
                     <span id="mascota-jugador"></span>
                     <div id="ataqueDelJugador"></div>
                 </div>
 
                 <div class="contenedor-enemigo">
-                    <span id="vidas-enemigo">3</span>
+                    <span id="vidas-enemigo">0</span>
                     <span id="mascota-enemigo"></span>
                     <div id="ataqueDelEnemigo"></div>
                 </div>
             </div>
         </section>
 
-        <script src="./js/mokepon.js"></script>
+        <script type="module" src="./js/main.js"></script>
     </body>
 </html>

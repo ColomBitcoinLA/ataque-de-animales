@@ -1,7 +1,7 @@
 {
   "name": "ataque-de-animales",
-  "version": "1.0.0",
-  "description": "juego de ataque de animales - Practicas",
+  "version": "2.0.0",
+  "description": "Animal Combat - juego multijugador con WebSockets",
   "homepage": "https://github.com/ColombiTcoinLA/ataque-de-animales#readme",
   "bugs": {
     "url": "https://github.com/ColombiTcoinLA/ataque-de-animales/issues"
@@ -15,10 +15,13 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "cors": "^2.8.6",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "ws": "^8.18.3"
   }
 }
