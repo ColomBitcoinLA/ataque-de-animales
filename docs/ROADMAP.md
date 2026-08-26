@@ -1,12 +1,12 @@
 # 🗺️ Animal Combat - Hoja de Ruta de Innovación y Escalabilidad (Roadmap)
 
-Este documento define las fases de evolución del juego, desde la refactorización arquitectónica hasta la implementación de mecánicas avanzadas multijugador y de seguridad.
+Este documento define las fases de evolución del juego, desde la refactorización arquitectónica hasta la implementación de mecánicas avanzadas multijugador, progresión y visión futura 3D.
 
 ---
 
 ## 📌 Fase 1: Desacoplamiento, Limpieza y Red en Tiempo Real (Completada)
 - [x] **Modularización del Frontend (ES Modules)**:
-  - `js/core/GameState.js` (FSM para controlar vistas y transiciones limpias sin manipular `style.display` directo por doquier).
+  - `js/core/GameState.js` (FSM para controlar vistas y transiciones).
   - `js/core/GameEngine.js` (Loop desacoplado con `requestAnimationFrame` y delta time).
   - `js/entities/Animal.js` (Clases con hitbox ajustada e interpolación de movimiento).
   - `js/network/NetworkClient.js` (Cliente WebSocket con reconexión automática y fallback).
@@ -15,7 +15,6 @@ Este documento define las fases de evolución del juego, desde la refactorizaci�
   - Reemplazo del polling HTTP de 50ms por WebSockets orientados a eventos.
   - Generación segura de IDs (`crypto.randomUUID`).
   - Limpieza automática de jugadores desconectados (heartbeat/ping-pong).
-  - Validación básica de payloads (helmet/rate-limit → Fase 3/seguridad).
 
 ---
 
@@ -23,31 +22,58 @@ Este documento define las fases de evolución del juego, desde la refactorizaci�
 - [x] **Mecánicas de Combate Estratégico**:
   - Barra de Maná / Puntos de Acción (AP): 3 iniciales, +1 por turno.
   - Ataque Básico (0 AP) vs Ataque Cargado Elemental (2 AP).
-  - Efectos de Estado: Quemado 🔥 (daño residual), Congelado 💧 (reduce daño recibido), Envenenado 🌱 (reduce ataque rival).
-  - Barras de HP animadas con transiciones CSS.
+  - Efectos de Estado: Quemado 🔥, Congelado 💧, Envenenado 🌱.
+  - Barras de HP animadas con transiciones dinámicas.
 - [x] **Feedback Audiovisual (Juice it!)**:
-  - Partículas en Canvas (`js/fx/ParticleSystem.js`): fuego, agua y tierra + Screen Shake (canvas y CSS).
-  - Gestor de Audio procedural (`js/audio/SoundManager.js`) con Web Audio API: selección, pasos, ataques elementales, victoria/derrota y toggle mute flotante.
+  - Partículas en Canvas (`js/fx/ParticleSystem.js`): fuego, agua y tierra + Screen Shake.
+  - Gestor de Audio procedural (`js/audio/SoundManager.js`) con Web Audio API.
 - [x] **UI interactiva responsiva**: tooltips en ataques, badges de estado, diseño responsive móvil/escritorio.
 
 ---
 
-## 📌 Fase 3: Multijugador Autoritativo y Matchmaking
-- [ ] **Salas de Juego (Rooms) y Lobby**:
-  - Creación y unión por código de sala o Matchmaking aleatorio.
-  - Sincronización de combate 1v1 en tiempo real autoritativo en servidor.
-- [ ] **Modo Un Solo Jugador con IA Inteligente**:
-  - Selector de dificultad (Fácil, Normal, Difícil con IA predictiva).
-- [ ] **Mapas Dinámicos**:
-  - Obstáculos en el canvas (rocas, ríos que no se pueden cruzar).
-  - Power-ups recogibles en el mapa (botiquines de vida, botas de velocidad).
+## 📌 Fase 3: Multijugador Autoritativo, Matchmaking y Matriz Elemental (Completada)
+- [x] **Salas de Juego (Rooms) y Lobby**:
+  - Salas privadas con código alfanumérico de 4 caracteres (ej. `K9X2`).
+  - Quick Matchmaking automático (cola 1v1) y feedback de búsqueda.
+  - Limpieza automática de salas al desconectar o finalizar partida.
+- [x] **Combate 1v1 Autoritativo con Sincronización de Turnos**:
+  - El servidor gestiona HP/AP/estados de ambos jugadores.
+  - Bloqueo de botones tras lanzar ataque y feedback de espera (*"Esperando acción del rival"*).
+  - Timer de 10s por ronda → difusión de `round_resolved`.
+  - Matriz elemental Pokémon: Súper Efectivo ($\times 1.5$), Poco Efectivo ($\times 0.7$) y Afinidad STAB ($\times 1.2$).
+- [x] **Modo Un Solo Jugador con IA Inteligente** (`js/entities/BotAI.js`):
+  - Fácil (aleatorio), Normal (30% cargados), Difícil/Maestro (IA predictiva con historial y contramedidas elementales).
+- [x] **Mapas Dinámicos**:
+  - Obstáculos sólidos (`js/entities/Obstacle.js`): rocas, árboles y ruinas con colisión AABB.
+  - Power-ups (`js/entities/PowerUp.js`): Poción de Vida 💖 (+25 HP), Cristal de Maná ⚡ (+1 AP), Botas de Rapidez 🥾 (+30% vel).
 
 ---
 
-## 📌 Fase 4: Persistencia, Cuentas y Progresión
-- [ ] **Autenticación y Perfil**:
-  - Registro/Login con JWT seguro.
-  - Guardado de estadísticas (Victorias, Derrotas, Tasa de Victorias).
-- [ ] **Sistema de Progresión**:
-  - Puntos de Experiencia (XP) y niveles para los animales.
-  - Desbloqueo de aspectos (skins) y títulos honoríficos medievales.
+## 📌 Fase 4: Persistencia, Cuentas, Progresión y Niveles de Mascotas (En Ejecución)
+- [ ] **Autenticación y Cuentas de Usuario**:
+  - Registro y Login seguro con hash de contraseñas (SHA-256) y sesión JWT/UUID (`AuthService.js`).
+  - Base de datos local estructurada (`data/database.json`).
+  - Modo Invitado (Guest) para jugar sin registro.
+- [ ] **Perfil y Estadísticas de Jugador**:
+  - Historial de partidas recientes, Victorias, Derrotas y % Winrate.
+  - Modal visual de Perfil en el Lobby.
+- [ ] **Sistema de Progresión y Niveles (XP)**:
+  - Ganancia de experiencia tras cada batalla (+100 XP victoria, +35 XP derrota).
+  - Sistema de Niveles de Jugador y Nivel de Mascota.
+  - Desbloqueo de títulos honoríficos (*Aprendiz, Gladiador, Domador Legendario*) y marcos de avatar.
+
+---
+
+## 🚀 Fase 5: Visión Futura & Innovación Avanzada (Roadmap Futuro)
+- [ ] **Motor de Batalla 3D (Three.js / WebGL)**:
+  - Escenarios de combate 3D estilo Pokémon Stadium / Colosseum.
+  - Modelos tridimensionales de animales y proyectiles 3D en tiempo real.
+  - Cámaras cinemáticas dinámicas durante el impacto de ataques cargados.
+- [ ] **Árbol de Tipos Elementales Expandido**:
+  - Nuevos elementos: ⚡ **Eléctrico**, ❄️ **Hielo**, 🍃 **Planta**, 💨 **Viento**, 🐉 **Dragón**, 🌑 **Sombra**, ☀️ **Luz**.
+  - Interacciones de debilidades y resistencias compuestas (doble tipo elemental).
+- [ ] **Escalabilidad de Stats por Nivel (RPG Stats Curve)**:
+  - Atributos por nivel: **Ataque (ATK)**, **Defensa (DEF)**, **Velocidad (SPD)** y **Maestría Elemental**.
+  - Las mascotas de nivel superior mitigan la desventaja elemental contra rivales de menor nivel gracias a su defensa y poder acumulado.
+- [ ] **Árbol de Habilidades y Movimientos Personalizables**:
+  - Selección de hasta 4 habilidades activas antes de entrar al combate.

@@ -1,4 +1,4 @@
-/** @typedef {'SELECCION' | 'MAPA' | 'COMBATE' | 'FIN'} GamePhase */
+/** @typedef {'LOBBY' | 'SELECCION' | 'MAPA' | 'COMBATE' | 'FIN'} GamePhase */
 
 const TIPOS_ATAQUE = [
   { 
@@ -41,6 +41,7 @@ export { TIPOS_ATAQUE, FUERZA_ATAQUES, STATUS_EFFECTS };
  */
 export class UIManager {
   constructor() {
+    this.sectionLobby = document.getElementById("lobby-section");
     this.sectionSeleccionarMascota = document.getElementById("seleccionar-mascota");
     this.sectionSeleccionarAtaque = document.getElementById("seleccionar-ataque");
     this.sectionVerMapa = document.getElementById("ver-mapa");
@@ -134,6 +135,7 @@ export class UIManager {
    * @param {GamePhase} phase
    */
   showPhase(phase) {
+    this._hide(this.sectionLobby);
     this._hide(this.sectionSeleccionarMascota);
     this._hide(this.sectionVerMapa);
     this._hide(this.sectionSeleccionarAtaque);
@@ -141,6 +143,9 @@ export class UIManager {
     document.body.classList.remove("mapa-activo");
 
     switch (phase) {
+      case "LOBBY":
+        this._show(this.sectionLobby, "flex");
+        break;
       case "SELECCION":
         this._show(this.sectionSeleccionarMascota, "flex");
         break;
