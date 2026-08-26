@@ -6,6 +6,7 @@ export class NetworkClient {
     this.url = url || this._defaultUrl();
     this.ws = null;
     this.playerId = "";
+    this.authToken = localStorage.getItem("animalcombat_token") || null;
     this.connected = false;
     this._intentionalClose = false;
     this._retry = 0;
@@ -18,6 +19,17 @@ export class NetworkClient {
   _defaultUrl() {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     return `${proto}//${location.host || "localhost:8080"}`;
+  }
+
+  /** Actualiza el token usado en el próximo handshake. @param {string|null} token */
+  setAuthToken(token) {
+    this.authToken = token;
+  }
+
+  _buildUrl() {
+    if (!this.authToken) return this.url;
+    const sep = this.url.includes("?") ? "&" : "?";
+    return `${this.url}${sep}token=${encodeURIComponent(this.authToken)}`;
   }
 
   on(event, fn) {
@@ -35,13 +47,16 @@ export class NetworkClient {
   connect() {
     this._intentionalClose = false;
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) return;
-    try { this.ws = new WebSocket(this.url); } catch { this._scheduleReconnect(); return; }
+    try { this.ws = new WebSocket(this._buildUrl()); } catch { this._scheduleReconnect(); return; }
 
     this.ws.addEventListener("open", () => { this.connected = true; this._retry = 0; this._emit("open", {}); this._startClientPing(); });
     this.ws.addEventListener("message", (ev) => {
       let msg; try { msg = JSON.parse(ev.data); } catch { return; }
       const { type, payload } = msg;
-      if (type === "welcome" && payload?.id) this.playerId = payload.id;
+      if (type === "welcome" && payload?.id) {
+        this.playerId = payload.id;
+        window.__animalCombatPlayerId = payload.id;
+      }
       if (type === "pong") return;
       if (type === "ping") { this.emit("ping", { t: Date.now() }); return; }
       this._emit(type, payload);

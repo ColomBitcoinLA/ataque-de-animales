@@ -49,18 +49,20 @@ Este documento define las fases de evolución del juego, desde la refactorizaci�
 
 ---
 
-## 📌 Fase 4: Persistencia, Cuentas, Progresión y Niveles de Mascotas (En Ejecución)
-- [ ] **Autenticación y Cuentas de Usuario**:
-  - Registro y Login seguro con hash de contraseñas (SHA-256) y sesión JWT/UUID (`AuthService.js`).
-  - Base de datos local estructurada (`data/database.json`).
-  - Modo Invitado (Guest) para jugar sin registro.
-- [ ] **Perfil y Estadísticas de Jugador**:
-  - Historial de partidas recientes, Victorias, Derrotas y % Winrate.
-  - Modal visual de Perfil en el Lobby.
-- [ ] **Sistema de Progresión y Niveles (XP)**:
-  - Ganancia de experiencia tras cada batalla (+100 XP victoria, +35 XP derrota).
-  - Sistema de Niveles de Jugador y Nivel de Mascota.
-  - Desbloqueo de títulos honoríficos (*Aprendiz, Gladiador, Domador Legendario*) y marcos de avatar.
+## 📌 Fase 4: Persistencia, Cuentas, Progresión y Niveles de Mascotas (Completada)
+- [x] **Autenticación y Cuentas de Usuario**:
+  - Registro y Login seguro con hash de contraseñas (SHA-256 + salt) y sesión con token UUID (`crypto` nativo).
+  - Base de datos local estructurada (`data/database.json`) con auto-guardado y escritura atómica.
+  - Modo Invitado (Guest) para jugar sin registro con progreso en `localStorage`.
+- [x] **Perfil y Estadísticas de Jugador**:
+  - Historial de últimas 5 partidas, Victorias, Derrotas y % Winrate.
+  - Tarjeta de Perfil en el Lobby + modal de Login/Registro (`AuthModal.js`, `ProfileManager.js`).
+- [x] **Sistema de Progresión y Niveles (XP)**:
+  - Ganancia de experiencia tras cada batalla (+100 XP victoria, +35 XP derrota, +50 bonus vs IA Difícil).
+  - Niveles: 1 (0), 2 (200), 3 (500), 4 (1000), 5 (1600) → Maestro de Bestias.
+  - Títulos honoríficos (*Aprendiz, Gladiador, Guerrero Elemental, Domador Legendario, Maestro de Bestias*).
+  - Bonos por nivel: +5 HP y +2 DMG por nivel en las mascotas.
+- [x] **Integración WebSocket**: token de sesión en el handshake (`?token=`) para registrar automáticamente resultados online.
 
 ---
 

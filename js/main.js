@@ -4,6 +4,8 @@ import { Animal, createDefaultAnimals } from "./entities/Animal.js";
 import { NetworkClient } from "./network/NetworkClient.js";
 import { UIManager, TIPOS_ATAQUE, FUERZA_ATAQUES, STATUS_EFFECTS } from "./ui/UIManager.js";
 import { LobbyManager } from "./ui/LobbyManager.js";
+import { AuthModal } from "./ui/AuthModal.js";
+import { ProfileManager } from "./ui/ProfileManager.js";
 import { ParticleSystem } from "./fx/ParticleSystem.js";
 import { SoundManager } from "./audio/SoundManager.js";
 import { BotAI } from "./entities/BotAI.js";
@@ -19,6 +21,23 @@ const net = new NetworkClient();
 const particles = new ParticleSystem();
 const sfx = new SoundManager();
 const { list: animales } = createDefaultAnimals();
+
+// —— Fase 4: Autenticación y Perfil ——
+const profiles = new ProfileManager();
+let petDmgBonus = 0;
+const authModal = new AuthModal((authState) => {
+  if (authState.loggedIn) {
+    profiles.state.loggedIn = true;
+    profiles.state.username = authState.username;
+    profiles.state.token = authState.token;
+    profiles.saveSession(authState.token, authState.username);
+    profiles.applyServerProfile(authState.profile);
+    net.setAuthToken(authState.token);
+    if (net.connected) net.disconnect(); // fuerza reconexión con token
+    net.connect();
+  }
+  renderAuthUI();
+});
 
 let mascotaJugador = null;
 let npcEnemigos = [];
@@ -349,21 +368,33 @@ net.on("round_resolved", (p) => {
   ui.setScores(gameState.rondasJugador, gameState.rondasEnemigo);
 });
 
-net.on("match_ended", (p) => {
+net.on("match_ended", async (p) => {
   let msg = "";
-  if (p.winner === gameState.jugadorId) { 
-    msg = "🎉 ¡VICTORIA! Eres el campeón 🎉"; 
-    sfx.playVictory(); 
-  } else if (p.winner === "draw") { 
-    msg = "🤝 EMPATE TOTAL 🤝"; 
+  if (p.winner === gameState.jugadorId) {
+    msg = "🎉 ¡VICTORIA! Eres el campeón 🎉";
+    sfx.playVictory();
+  } else if (p.winner === "draw") {
+    msg = "🤝 EMPATE TOTAL 🤝";
   } else if (p.reason === "opponent_left") {
     msg = "🏆 ¡VICTORIA! El rival abandonó la partida 🏆";
     sfx.playVictory();
-  } else { 
-    msg = "💀 DERROTA: Te han vencido 💀"; 
-    sfx.playDefeat(); 
+  } else {
+    msg = "💀 DERROTA: Te han vencido 💀";
+    sfx.playDefeat();
   }
   finalizarJuego(msg);
+
+  // —— Fase 4: XP y progreso ——
+  let reward = null;
+  if (p.profile && p.profile.username) {
+    // Servidor ya registró el resultado para la cuenta autenticada
+    profiles.applyServerProfile(p.profile);
+    reward = { xpGain: p.xpGain || 0, leveledUp: !!p.leveledUp, newLevel: p.newLevel, title: p.newTitle };
+  } else {
+    reward = await profiles.handleServerMatchEnd(p);
+  }
+  if (reward && reward.xpGain) ui.appendMessage(xpRewardText(reward));
+  renderAuthUI();
 });
 
 function enableAttackButtons() {
@@ -404,12 +435,79 @@ function upsertRemote(data) {
   if (typeof data.x === "number" && typeof data.y === "number") a.setPosition(data.x, data.y, !Number.isFinite(a.x));
 }
 
-// ——— Flujo de Pantallas ———
+// ——— Fase 4: UI de Perfil y Auth ———
+function xpRewardText(r) {
+  let t = `✨ +${r.xpGain} XP`;
+  if (r.leveledUp && r.newLevel) t += ` | 🎊 ¡SUBISTE AL NIVEL ${r.newLevel}! Título: ${r.title}`;
+  return t;
+}
+
+function renderAuthUI() {
+  const btnLogin = document.getElementById("btn-login");
+  const btnLogout = document.getElementById("btn-logout");
+  if (btnLogin) btnLogin.classList.toggle("hidden", profiles.state.loggedIn);
+  if (btnLogout) btnLogout.classList.toggle("hidden", !profiles.state.loggedIn);
+  renderProfileCard();
+}
+
+function renderProfileCard() {
+  const card = document.getElementById("profile-card");
+  if (!card) return;
+  const p = profiles.state.profile;
+  if (!p) { card.innerHTML = ""; return; }
+
+  let pct = 100;
+  if (p.xpForNext != null) {
+    const span = Math.max(1, p.xpForNext - (p.xpPrev || 0));
+    pct = Math.max(0, Math.min(100, ((p.xp - (p.xpPrev || 0)) / span) * 100));
+  }
+  const xpLabel = p.xpForNext != null ? `${p.xp} / ${p.xpForNext} XP` : `${p.xp} XP · MÁX`;
+
+  const histHtml = (p.history || []).slice(-5).reverse().map((h) => `
+    <div class="history-item ${h.result}">
+      <span class="history-result">${h.result === "win" ? "🏆 Victoria" : h.result === "loss" ? "💀 Derrota" : "🤝 Empate"}</span>
+      <span class="history-detail">${h.pet} vs ${h.opponent}${h.vsAI ? " (IA)" : ""}</span>
+    </div>
+  `).join("");
+
+  card.innerHTML = `
+    <div class="profile-header">
+      <span class="profile-name">${p.guest ? "👤" : "🛡️"} ${p.username}</span>
+      <span class="profile-title-badge">🎖️ Nv.${p.level} · ${p.title}</span>
+    </div>
+    <div class="profile-level-row">
+      <span class="profile-level">Nivel ${p.level}</span>
+      <div class="xp-bar"><div class="xp-bar-fill" style="width:${pct}%"></div></div>
+      <span class="xp-text">${xpLabel}</span>
+    </div>
+    <div class="profile-stats">
+      <div class="stat-box"><div class="stat-value">${p.stats.battles}</div><div class="stat-label">Batallas</div></div>
+      <div class="stat-box"><div class="stat-value">${p.stats.wins}</div><div class="stat-label">Victorias</div></div>
+      <div class="stat-box"><div class="stat-value">${p.stats.losses}</div><div class="stat-label">Derrotas</div></div>
+      <div class="stat-box"><div class="stat-value">${p.stats.winrate}%</div><div class="stat-label">Winrate</div></div>
+    </div>
+    ${histHtml ? `<div class="profile-history"><h4>Últimas partidas:</h4>${histHtml}</div>` : ""}
+  `;
+}
+
+function bindAuthButtons() {
+  document.getElementById("btn-login")?.addEventListener("click", () => authModal.open("login"));
+  document.getElementById("btn-logout")?.addEventListener("click", () => {
+    profiles.logout();
+    net.setAuthToken(null);
+    if (net.connected) net.disconnect();
+    net.connect();
+    renderAuthUI();
+  });
+}
+
+// —— Flujo de Pantallas ——
 function irALobby() {
   gameState.resetAll();
   if (ui.botonMascotaJugador) ui.botonMascotaJugador.disabled = false;
   ui.showPhase("LOBBY");
   lobby.show();
+  renderAuthUI();
 }
 
 function seleccionarMascota() {
@@ -419,6 +517,17 @@ function seleccionarMascota() {
   
   sfx.playSelect();
   gameState.nombreMascotaJugador = nombre;
+
+  // Fase 4: aplicar bonos de nivel a la mascota (+5 HP / +2 DMG por nivel)
+  if (gameState.gameMode !== "online") {
+    const bonus = profiles.getPetBonuses();
+    petDmgBonus = bonus.dmgBonus;
+    gameState.maxHp = 100 + bonus.hpBonus;
+    if (bonus.hpBonus > 0) ui.appendMessage(`🎖️ Bonos Nv.${profiles.state.profile.level}: +${bonus.hpBonus} HP, +${bonus.dmgBonus} DMG`);
+  } else {
+    petDmgBonus = 0;
+  }
+
   gameState.resetCombat();
   ui.setPetNames(nombre, gameState.nombreMascotaEnemigo || "");
   ui.setScores(0, 0); 
@@ -530,6 +639,7 @@ function onPlayerAttack(ataqueJug, emojiJug, charged) {
 
   // Matriz de efectividad elemental y bonus de afinidad
   let dmgPlayer = charged ? 30 : 20;
+  dmgPlayer += petDmgBonus; // Fase 4: bono de daño por nivel
   if (AFINIDAD_ANIMAL[gameState.nombreMascotaJugador] === ataqueJug) dmgPlayer = Math.floor(dmgPlayer * 1.2);
   let playerEff = "";
   if (FUERZA_ATAQUES[ataqueJug] === ataqueEnem) {
@@ -601,14 +711,27 @@ function onPlayerAttack(ataqueJug, emojiJug, charged) {
   enableAttackButtons();
 
   if (gameState.hpJugador <= 0 || gameState.hpEnemigo <= 0 || gameState.ataqueJugador.length >= 5) {
-    setTimeout(() => {
+    setTimeout(async () => {
       let msg = "";
-      if (gameState.hpJugador <= 0) { msg = "💀 DERROTA: Te has quedado sin vida"; sfx.playDefeat(); }
-      else if (gameState.hpEnemigo <= 0) { msg = "🎉 ¡VICTORIA! Derrotaste al rival"; sfx.playVictory(); }
-      else if (gameState.rondasJugador > gameState.rondasEnemigo) { msg = `🎉 GANASTE ${gameState.rondasJugador} a ${gameState.rondasEnemigo} 🎉`; sfx.playVictory(); }
-      else if (gameState.rondasEnemigo > gameState.rondasJugador) { msg = `💀 PERDISTE ${gameState.rondasJugador} a ${gameState.rondasEnemigo} 💀`; sfx.playDefeat(); }
+      let result = "draw";
+      if (gameState.hpJugador <= 0) { msg = "💀 DERROTA: Te has quedado sin vida"; sfx.playDefeat(); result = "loss"; }
+      else if (gameState.hpEnemigo <= 0) { msg = "🎉 ¡VICTORIA! Derrotaste al rival"; sfx.playVictory(); result = "win"; }
+      else if (gameState.rondasJugador > gameState.rondasEnemigo) { msg = `🎉 GANASTE ${gameState.rondasJugador} a ${gameState.rondasEnemigo} 🎉`; sfx.playVictory(); result = "win"; }
+      else if (gameState.rondasEnemigo > gameState.rondasJugador) { msg = `💀 PERDISTE ${gameState.rondasJugador} a ${gameState.rondasEnemigo} 💀`; sfx.playDefeat(); result = "loss"; }
       else msg = "🤝 EMPATE TOTAL 🤝";
+
       finalizarJuego(msg);
+
+      // Fase 4: registrar resultado y otorgar XP
+      try {
+        const reward = await profiles.reportMatch(result, {
+          pet: gameState.nombreMascotaJugador,
+          opponent: gameState.nombreMascotaEnemigo,
+          vsAI: true,
+          difficulty: gameState.difficulty,
+        });
+        if (reward) ui.appendMessage(xpRewardText(reward));
+      } catch { /* sin conexión */ }
     }, 600);
   }
 }
@@ -770,6 +893,11 @@ window.moverIzquierda = () => setDirection("left", true);
 window.moverDerecha = () => setDirection("right", true);
 window.detenerMovimiento = stopMovement;
 
-// ——— Inicialización ———
-net.connect();
-irALobby();
+// ——— Inicialización (Fase 4: restaurar sesión antes de conectar) ———
+(async () => {
+  await profiles.init();
+  net.setAuthToken(profiles.state.token);
+  bindAuthButtons();
+  net.connect();
+  irALobby();
+})();

@@ -1,0 +1,158 @@
+{
+  "users": {
+    "guerrero1": {
+      "salt": "dae420e82aaa1c9d06733c302426cb28",
+      "passwordHash": "854e88178a9c36097aa8d5d1ff4f046a3fda3fcff0b24969490b3c4f08c7d1cf",
+      "createdAt": "2026-08-26T15:02:56.523Z",
+      "xp": 635,
+      "stats": {
+        "battles": 5,
+        "wins": 4,
+        "losses": 1
+      },
+      "history": [
+        {
+          "result": "win",
+          "pet": "Salamander",
+          "opponent": "Tierrudo",
+          "vsAI": true,
+          "difficulty": "dificil",
+          "date": "2026-08-26T15:02:57.576Z"
+        },
+        {
+          "result": "loss",
+          "pet": "Salamander",
+          "opponent": "Neptuno",
+          "vsAI": true,
+          "difficulty": "normal",
+          "date": "2026-08-26T15:02:57.639Z"
+        },
+        {
+          "result": "win",
+          "pet": "Neptuno",
+          "opponent": "Salamander",
+          "vsAI": true,
+          "difficulty": "dificil",
+          "date": "2026-08-26T15:03:13.627Z"
+        },
+        {
+          "result": "win",
+          "pet": "Neptuno",
+          "opponent": "Salamander",
+          "vsAI": true,
+          "difficulty": "dificil",
+          "date": "2026-08-26T15:03:13.719Z"
+        },
+        {
+          "result": "win",
+          "pet": "Neptuno",
+          "opponent": "Salamander",
+          "vsAI": true,
+          "difficulty": "dificil",
+          "date": "2026-08-26T15:03:13.805Z"
+        }
+      ]
+    },
+    "jugadorA": {
+      "salt": "57ecd406e351d1d1858ec710e70a8d59",
+      "passwordHash": "6774e64634821fd65c74fd675e3fb5c95d4e0f9098fbab007d64416963f84fdc",
+      "createdAt": "2026-08-26T15:03:48.267Z",
+      "xp": 35,
+      "stats": {
+        "battles": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "history": [
+        {
+          "result": "loss",
+          "pet": "Neptuno",
+          "opponent": "Salamander",
+          "vsAI": false,
+          "difficulty": "normal",
+          "date": "2026-08-26T15:03:55.975Z"
+        }
+      ]
+    },
+    "jugadorB": {
+      "salt": "58f41849c5a0218eb140813c2daca64f",
+      "passwordHash": "73418caec4819c57538aa46cd6887ae0c47272571d63331a3bed0a103e109344",
+      "createdAt": "2026-08-26T15:03:48.281Z",
+      "xp": 100,
+      "stats": {
+        "battles": 1,
+        "wins": 1,
+        "losses": 0
+      },
+      "history": [
+        {
+          "result": "win",
+          "pet": "Salamander",
+          "opponent": "Neptuno",
+          "vsAI": false,
+          "difficulty": "normal",
+          "date": "2026-08-26T15:03:55.975Z"
+        }
+      ]
+    },
+    "user_1393": {
+      "salt": "b30d4725c3261e6b03ad1b2ef67b088c",
+      "passwordHash": "caa325c667255315c32aef5b7b2d23befc9c7b3c203777ee81a20bccf14b6a8c",
+      "createdAt": "2026-08-26T15:23:21.503Z",
+      "xp": 300,
+      "stats": {
+        "battles": 2,
+        "wins": 2,
+        "losses": 0
+      },
+      "history": [
+        {
+          "result": "win",
+          "pet": "Salamander",
+          "opponent": "Tierrudo",
+          "vsAI": true,
+          "difficulty": "dificil",
+          "date": "2026-08-26T15:23:21.511Z"
+        },
+        {
+          "result": "win",
+          "pet": "Salamander",
+          "opponent": "Tierrudo",
+          "vsAI": true,
+          "difficulty": "dificil",
+          "date": "2026-08-26T15:23:21.515Z"
+        }
+      ]
+    }
+  },
+  "sessions": {
+    "65acd610f9bfc120219f935a96b06719da14fb2f926b445b39a7da4811e39381": {
+      "username": "guerrero1",
+      "expiresAt": 1788361376523
+    },
+    "ae15644c2f6c019ebb784edd6822a9f949c5e5ec13e824cb5ca3c0decba83411": {
+      "username": "guerrero1",
+      "expiresAt": 1788361377135
+    },
+    "fbd660150cae7f056848555098f064b656eb70a2bb1923ff1ae5a7ae128272ee": {
+      "username": "guerrero1",
+      "expiresAt": 1788361393408
+    },
+    "32d8035808766e366545c09e8e4f1b025fcc82ab8b285ecb56183fcd2648e522": {
+      "username": "guerrero1",
+      "expiresAt": 1788361412031
+    },
+    "7105fc4bb6af57b7ee98f9a525112b17dd5d57613921d6afb68e9fd3f8030f08": {
+      "username": "jugadorA",
+      "expiresAt": 1788361428267
+    },
+    "1226d2b346ed87bf30222a2d5895843ec7b261e0b61924ba8f2f6a9e44fc95bb": {
+      "username": "jugadorB",
+      "expiresAt": 1788361428281
+    },
+    "a8c84bd685244ab67a8723eca52f2fce88c4c3c1883b58f0367478cf79a4c4a1": {
+      "username": "user_1393",
+      "expiresAt": 1788362601503
+    }
+  }
+}

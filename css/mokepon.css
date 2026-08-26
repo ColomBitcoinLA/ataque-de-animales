@@ -752,6 +752,288 @@ body.mapa-activo .contenedor-ataques {
 }
 
 /* ============================================================
+   7. AUTENTICACIÓN Y PERFIL (FASE 4)
+   ============================================================ */
+.auth-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.auth-bar-btn {
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-family: "MedievalSharp", cursive;
+    background: rgba(15, 20, 32, 0.9);
+    color: var(--color-primario);
+    border: 1.5px solid var(--color-borde);
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.auth-bar-btn:hover {
+    border-color: var(--color-primario);
+    box-shadow: 0 0 12px var(--color-primario-glow);
+    transform: translateY(-2px);
+}
+
+/* —— Modal de Auth —— */
+.auth-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.auth-modal.hidden {
+    display: none;
+}
+
+.auth-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 8, 14, 0.85);
+    backdrop-filter: blur(6px);
+}
+
+.auth-modal-box {
+    position: relative;
+    width: min(92vw, 380px);
+    background: var(--color-panel);
+    border: 2px solid var(--color-primario);
+    border-radius: 18px;
+    padding: 28px 24px 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(10, 233, 138, 0.15);
+    animation: fadeInBadge 0.25s ease;
+}
+
+.auth-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.auth-close:hover {
+    background: #e94040;
+    border-color: #e94040;
+}
+
+.auth-title {
+    text-align: center;
+    font-size: 1.4rem;
+    color: var(--color-primario);
+    margin-bottom: 18px;
+}
+
+.auth-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 18px;
+}
+
+.auth-tab {
+    flex: 1;
+    padding: 9px;
+    cursor: pointer;
+    font-family: "MedievalSharp", cursive;
+    font-size: 0.92rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--color-texto-muted);
+    border: 1.5px solid transparent;
+    border-radius: 10px;
+    transition: all 0.2s;
+}
+
+.auth-tab.active {
+    background: rgba(10, 233, 138, 0.15);
+    color: var(--color-primario);
+    border-color: var(--color-primario);
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.auth-form input {
+    padding: 11px 14px;
+    font-family: "MedievalSharp", cursive;
+    font-size: 1rem;
+    background: rgba(10, 14, 23, 0.9);
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: #fff;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-form input:focus {
+    border-color: var(--color-primario);
+    box-shadow: 0 0 12px var(--color-primario-glow);
+}
+
+.auth-message {
+    min-height: 20px;
+    font-size: 0.88rem;
+    text-align: center;
+}
+
+.auth-message.auth-error { color: #ff6b6b; }
+.auth-message.auth-success { color: var(--color-primario); }
+
+.auth-submit-btn {
+    margin-top: 4px;
+}
+
+/* —— Tarjeta de Perfil en el Lobby —— */
+.profile-card {
+    width: min(94vw, 420px);
+    background: rgba(15, 22, 36, 0.92);
+    border: 2px solid var(--color-borde);
+    border-radius: 16px;
+    padding: 16px 20px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    animation: fadeInBadge 0.3s ease;
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.profile-name {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--color-primario);
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.profile-title-badge {
+    font-size: 0.78rem;
+    font-weight: bold;
+    padding: 3px 12px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(255, 221, 68, 0.2), rgba(255, 221, 68, 0.05));
+    border: 1.5px solid var(--color-ap);
+    color: var(--color-ap);
+    white-space: nowrap;
+}
+
+.profile-level-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.profile-level {
+    font-size: 1rem;
+    color: #fff;
+    font-weight: bold;
+}
+
+.xp-bar {
+    flex: 1;
+    height: 14px;
+    background: #1e293b;
+    border-radius: 7px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.xp-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #1565c0, #42a5f5, var(--color-ap));
+    background-size: 200% 100%;
+    border-radius: 7px;
+    transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    animation: xpShimmer 2.2s linear infinite;
+}
+
+@keyframes xpShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.xp-text {
+    font-size: 0.75rem;
+    color: var(--color-texto-muted);
+    min-width: 86px;
+    text-align: right;
+}
+
+.profile-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-top: 12px;
+    text-align: center;
+}
+
+.stat-box {
+    background: rgba(10, 14, 23, 0.7);
+    border-radius: 8px;
+    padding: 6px 4px;
+}
+
+.stat-value {
+    font-size: 1.05rem;
+    font-weight: bold;
+    color: var(--color-primario);
+}
+
+.stat-label {
+    font-size: 0.68rem;
+    color: var(--color-texto-muted);
+}
+
+.profile-history {
+    margin-top: 12px;
+}
+
+.profile-history h4 {
+    font-size: 0.82rem;
+    color: var(--color-texto-muted);
+    margin-bottom: 6px;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    padding: 4px 8px;
+    margin-top: 4px;
+    border-radius: 6px;
+    background: rgba(30, 41, 59, 0.7);
+}
+
+.history-item.win .history-result { color: var(--color-hp-high); }
+.history-item.loss .history-result { color: var(--color-hp-low); }
+.history-item.draw .history-result { color: var(--color-hp-mid); }
+
+.history-result { font-weight: bold; }
+.history-detail { color: var(--color-texto-muted); }
+
+/* ============================================================
    6. LOBBY / MENÚ PRINCIPAL
    ============================================================ */
 .lobby-section {

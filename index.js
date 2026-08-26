@@ -2,7 +2,8 @@ const http = require("http");
 const express = require("express");
 const cors = require("cors");
 const { WebSocketServer } = require("ws");
-const { randomUUID } = require("crypto");
+const { randomUUID, createHash, randomBytes } = require("crypto");
+const fs = require("fs");
 const path = require("path");
 
 const PORT = process.env.PORT || 8080;
@@ -22,20 +23,267 @@ const FREEZE_DAMAGE_REDUCTION = 0.75;
 const POISON_SELF_DAMAGE_MULT = 0.85;
 const POISON_TARGET_VULN_MULT = 1.15;
 
+// ——— Fase 4: Progresión ———
+const XP_WIN = 100;
+const XP_LOSS = 35;
+const XP_HARD_AI_BONUS = 50;
+const HP_PER_LEVEL = 5;
+const DMG_PER_LEVEL = 2;
+const LEVEL_THRESHOLDS = [0, 200, 500, 1000, 1600]; // L1..L5
+const LEVEL_TITLES = {
+  1: "Aprendiz",
+  2: "Gladiador",
+  3: "Guerrero Elemental",
+  4: "Domador Legendario",
+  5: "Maestro de Bestias",
+};
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 días
+const HISTORY_MAX = 5;
+
+function levelForXp(xp) {
+  let lvl = 1;
+  for (let i = 0; i < LEVEL_THRESHOLDS.length; i++) {
+    if (xp >= LEVEL_THRESHOLDS[i]) lvl = i + 1;
+  }
+  // Nivel 6+: cada nivel adicional requiere +1000 XP sobre el anterior
+  let threshold = LEVEL_THRESHOLDS[4];
+  while (xp >= threshold + 1000) { threshold += 1000; lvl++; }
+  return lvl;
+}
+function titleForLevel(level) {
+  if (level >= 5) return LEVEL_TITLES[5];
+  return LEVEL_TITLES[level] || LEVEL_TITLES[1];
+}
+function hpMaxForLevel(level) { return MAX_HP + Math.max(0, level - 1) * HP_PER_LEVEL; }
+function dmgBonusForLevel(level) { return Math.max(0, level - 1) * DMG_PER_LEVEL; }
+
 // Matriz Elemental estilo Pokémon
 const FUERZA_ATAQUES = { FUEGO: "TIERRA", AGUA: "FUEGO", TIERRA: "AGUA" };
 const DEBILIDAD_ATAQUES = { FUEGO: "AGUA", AGUA: "TIERRA", TIERRA: "FUEGO" };
 const AFINIDAD_ANIMAL = { Neptuno: "AGUA", Salamander: "FUEGO", Tierrudo: "TIERRA" };
 
+// ============================================================
+// FASE 4: Base de Datos Local (data/database.json)
+// ============================================================
+const DATA_DIR = path.join(__dirname, "data");
+const DB_PATH = path.join(DATA_DIR, "database.json");
+
+let db = { users: {}, sessions: {} };
+let saveTimer = null;
+
+function loadDB() {
+  try {
+    if (fs.existsSync(DB_PATH)) {
+      db = JSON.parse(fs.readFileSync(DB_PATH, "utf8"));
+      db.users = db.users || {};
+      db.sessions = db.sessions || {};
+    }
+  } catch (e) {
+    console.error("[DB] Error cargando base de datos:", e.message);
+    db = { users: {}, sessions: {} };
+  }
+}
+
+function saveDB(immediate = false) {
+  const write = () => {
+    try {
+      if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+      const tmp = DB_PATH + ".tmp";
+      fs.writeFileSync(tmp, JSON.stringify(db, null, 2), "utf8");
+      fs.renameSync(tmp, DB_PATH); // escritura atómica
+    } catch (e) {
+      console.error("[DB] Error guardando:", e.message);
+    }
+  };
+  clearTimeout(saveTimer);
+  if (immediate) write();
+  else saveTimer = setTimeout(write, 300); // auto-guardado con debounce
+}
+
+function hashPassword(password, salt) {
+  return createHash("sha256").update(salt + ":" + password).digest("hex");
+}
+
+function createSession(username) {
+  const token = randomBytes(32).toString("hex");
+  db.sessions[token] = { username, expiresAt: Date.now() + SESSION_TTL_MS };
+  // limpieza de sesiones expiradas
+  const now = Date.now();
+  for (const [t, s] of Object.entries(db.sessions)) {
+    if (s.expiresAt < now) delete db.sessions[t];
+  }
+  saveDB();
+  return token;
+}
+
+function getUserByToken(token) {
+  const s = db.sessions[token];
+  if (!s || s.expiresAt < Date.now()) return null;
+  return db.users[s.username] || null;
+}
+
+function publicProfile(user, username) {
+  const level = levelForXp(user.xp);
+  const nextXp = level >= 5 ? null : LEVEL_THRESHOLDS[level]; // null = máximo
+  const prevXp = LEVEL_THRESHOLDS[level - 1] ?? 0;
+  const { battles, wins, losses } = user.stats;
+  return {
+    username,
+    xp: user.xp,
+    level,
+    title: titleForLevel(level),
+    xpForNext: nextXp,
+    xpPrev: prevXp,
+    stats: {
+      battles,
+      wins,
+      losses,
+      winrate: battles > 0 ? Math.round((wins / battles) * 100) : 0,
+    },
+    history: user.history.slice(-HISTORY_MAX),
+  };
+}
+
+function applyMatchResult(username, { result, pet, opponent, vsAI = false, difficulty = "normal" }) {
+  const user = db.users[username];
+  if (!user) return null;
+  const beforeLevel = levelForXp(user.xp);
+
+  user.stats.battles++;
+  let xpGain = 0;
+  if (result === "win") {
+    user.stats.wins++;
+    xpGain = XP_WIN;
+    if (vsAI && difficulty === "dificil") xpGain += XP_HARD_AI_BONUS;
+  } else if (result === "loss") {
+    user.stats.losses++;
+    xpGain = XP_LOSS;
+  } else {
+    xpGain = XP_LOSS; // empate cuenta como participación
+  }
+  user.xp += xpGain;
+  user.history.push({
+    result,
+    pet: pet || "?",
+    opponent: opponent || "?",
+    vsAI,
+    difficulty,
+    date: new Date().toISOString(),
+  });
+  if (user.history.length > HISTORY_MAX * 3) user.history = user.history.slice(-HISTORY_MAX);
+
+  const afterLevel = levelForXp(user.xp);
+  const leveledUp = afterLevel > beforeLevel;
+  saveDB();
+  return {
+    xpGain,
+    newProfile: publicProfile(user, username),
+    leveledUp,
+    previousLevel: beforeLevel,
+  };
+}
+
+loadDB();
+process.on("SIGINT", () => { saveDB(true); process.exit(0); });
+
+// ============================================================
+// Express + Rate Limiting básico para /api/
+// ============================================================
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
+const rateMap = new Map();
+function rateLimit(req, res, next) {
+  const ip = req.socket.remoteAddress || "unknown";
+  const now = Date.now();
+  const arr = (rateMap.get(ip) || []).filter((t) => now - t < 60_000);
+  arr.push(now);
+  rateMap.set(ip, arr);
+  if (arr.length > 30) return res.status(429).json({ error: "Demasiadas peticiones" });
+  next();
+}
+
+function authMiddleware(req, res, next) {
+  const header = req.headers.authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!token) return res.status(401).json({ error: "Token requerido" });
+  const user = getUserByToken(token);
+  if (!user) return res.status(401).json({ error: "Sesión inválida o expirada" });
+  req.user = user;
+  req.token = token;
+  next();
+}
+
+// ——— POST /api/register ———
+app.post("/api/register", rateLimit, (req, res) => {
+  const username = String(req.body?.username || "").trim();
+  const password = String(req.body?.password || "");
+  if (!/^[a-zA-Z0-9_]{3,16}$/.test(username)) {
+    return res.status(400).json({ error: "Usuario: 3-16 caracteres alfanuméricos" });
+  }
+  if (password.length < 4) {
+    return res.status(400).json({ error: "Contraseña mínimo 4 caracteres" });
+  }
+  if (db.users[username]) {
+    return res.status(409).json({ error: "El usuario ya existe" });
+  }
+  const salt = randomBytes(16).toString("hex");
+  db.users[username] = {
+    salt,
+    passwordHash: hashPassword(password, salt),
+    createdAt: new Date().toISOString(),
+    xp: 0,
+    stats: { battles: 0, wins: 0, losses: 0 },
+    history: [],
+  };
+  const token = createSession(username);
+  saveDB();
+  res.json({ ok: true, token, profile: publicProfile(db.users[username], username) });
+});
+
+// ——— POST /api/login ———
+app.post("/api/login", rateLimit, (req, res) => {
+  const username = String(req.body?.username || "").trim();
+  const password = String(req.body?.password || "");
+  const user = db.users[username];
+  if (!user || user.passwordHash !== hashPassword(password, user.salt)) {
+    return res.status(401).json({ error: "Credenciales incorrectas" });
+  }
+  const token = createSession(username);
+  res.json({ ok: true, token, profile: publicProfile(user, username) });
+});
+
+// ——— GET /api/profile ———
+app.get("/api/profile", rateLimit, authMiddleware, (req, res) => {
+  res.json({ ok: true, profile: publicProfile(req.user, findUsernameByUser(req.user)) });
+});
+
+function findUsernameByUser(user) {
+  for (const [name, u] of Object.entries(db.users)) if (u === user) return name;
+  return "";
+}
+
+// ——— POST /api/report_match (combates vs IA desde el cliente autenticado) ———
+app.post("/api/report_match", rateLimit, authMiddleware, (req, res) => {
+  const { result, pet, opponent, vsAI, difficulty } = req.body || {};
+  if (!["win", "loss", "draw"].includes(result)) {
+    return res.status(400).json({ error: "Resultado inválido" });
+  }
+  const out = applyMatchResult(findUsernameByUser(req.user), {
+    result, pet, opponent, vsAI: !!vsAI, difficulty: String(difficulty || "normal"),
+  });
+  if (!out) return res.status(500).json({ error: "Error registrando partida" });
+  res.json({ ok: true, ...out });
+});
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-// ——— Jugador ———
+// ============================================================
+// Jugadores conectados (WS)
+// ============================================================
 const jugadores = new Map();
 
 class Jugador {
@@ -49,6 +297,12 @@ class Jugador {
     this.lastPong = Date.now();
     this.roomCode = null;
     this.ready = false;
+    this.authToken = null;
+    this.username = null;
+  }
+  get level() {
+    if (this.username && db.users[this.username]) return levelForXp(db.users[this.username].xp);
+    return this.clientLevel || 1;
   }
   asignarMascota(nombre) { this.mascota = { nombre }; }
   actualizarPosicion(x, y) {
@@ -79,9 +333,12 @@ function getEffectForCharged(tipo) {
   return "NINGUNO";
 }
 
-function calcDamage(attackType, charged, animalName, defenderAttack, defenderStatus) {
+function calcDamage(attackType, charged, animalName, defenderAttack, defenderStatus, attackerDmgBonus = 0) {
   let base = charged ? CHARGED_BASE_DMG : BASIC_BASE_DMG;
-  
+
+  // Bonus de nivel del jugador (+2 por nivel)
+  base += attackerDmgBonus;
+
   // Bonus de afinidad de la mascota (STAB +20%)
   if (AFINIDAD_ANIMAL[animalName] === attackType) {
     base = Math.floor(base * 1.2);
@@ -90,14 +347,13 @@ function calcDamage(attackType, charged, animalName, defenderAttack, defenderSta
   // Matriz elemental de efectividad
   let efectividad = "NEUTRAL";
   if (FUERZA_ATAQUES[attackType] === defenderAttack) {
-    base = Math.floor(base * 1.5); // Súper efectivo
+    base = Math.floor(base * 1.5);
     efectividad = "SUPER_EFECTIVO";
   } else if (DEBILIDAD_ATAQUES[attackType] === defenderAttack) {
-    base = Math.floor(base * 0.7); // Poco efectivo
+    base = Math.floor(base * 0.7);
     efectividad = "POCO_EFECTIVO";
   }
 
-  // Modificadores de estado
   if (defenderStatus === "ENVENENADO") base = Math.floor(base * POISON_TARGET_VULN_MULT);
   return { damage: base, efectividad };
 }
@@ -135,24 +391,39 @@ class Room {
   startMatch() {
     this.state = "playing";
     const ids = this.getPlayerIds();
+    const hpMax = {};
+    const dmgBonus = {};
+    for (const id of ids) {
+      const lvl = jugadores.get(id)?.level || 1;
+      hpMax[id] = hpMaxForLevel(lvl);
+      dmgBonus[id] = dmgBonusForLevel(lvl);
+    }
     this.combat = {
-      hp: { [ids[0]]: MAX_HP, [ids[1]]: MAX_HP },
+      hp: { [ids[0]]: hpMax[ids[0]], [ids[1]]: hpMax[ids[1]] },
       ap: { [ids[0]]: MAX_AP, [ids[1]]: MAX_AP },
       status: { [ids[0]]: "NINGUNO", [ids[1]]: "NINGUNO" },
       round: 0,
       submissions: {},
       history: { [ids[0]]: [], [ids[1]]: [] },
+      hpMax,
+      dmgBonus,
+      pets: {},
     };
-    ids.forEach((id) => { this.players.get(id).ready = false; });
+    ids.forEach((id) => {
+      this.combat.pets[id] = this.players.get(id)?.animal || "Neptuno";
+      this.players.get(id).ready = false;
+    });
     for (const id of ids) {
       const oppId = this.getOpponent(id);
       sendTo(id, "match_start", {
         roomId: this.code,
         opponent: oppId,
-        opponentAnimal: this.players.get(oppId)?.animal,
-        playerAnimal: this.players.get(id)?.animal,
-        hpMax: MAX_HP,
+        opponentAnimal: this.combat.pets[oppId],
+        playerAnimal: this.combat.pets[id],
+        hpMax: this.combat.hpMax[id],
         apMax: MAX_AP,
+        yourLevel: jugadores.get(id)?.level || 1,
+        opponentLevel: jugadores.get(oppId)?.level || 1,
       });
     }
     this.startTurn();
@@ -167,7 +438,7 @@ class Room {
       sendTo(id, "turn_start", {
         round: this.combat.round,
         hp: this.combat.hp[id],
-        hpMax: MAX_HP,
+        hpMax: this.combat.hpMax[id],
         ap: this.combat.ap[id],
         status: this.combat.status[id],
       });
@@ -178,7 +449,7 @@ class Room {
 
   submitAttack(pid, attack, charged) {
     if (this.state !== "playing" || !this.combat) return;
-    if (this.combat.submissions[pid]) return; // ya envió ataque en este turno
+    if (this.combat.submissions[pid]) return;
 
     const validAttacks = ["FUEGO", "AGUA", "TIERRA"];
     if (!validAttacks.includes(attack)) attack = "FUEGO";
@@ -190,14 +461,9 @@ class Room {
 
     this.combat.submissions[pid] = { attack, charged };
 
-    // Confirmar al atacante que su ofensiva fue registrada y debe esperar
     sendTo(pid, "attack_confirmed", { attack, charged });
-
-    // Notificar al oponente que el rival ya eligió ataque
     const oppId = this.getOpponent(pid);
-    if (oppId) {
-      sendTo(oppId, "opponent_attacked", {});
-    }
+    if (oppId) sendTo(oppId, "opponent_attacked", {});
 
     if (Object.keys(this.combat.submissions).length === 2) {
       clearTimeout(this.turnTimer);
@@ -221,35 +487,31 @@ class Room {
     const [p1, p2] = ids;
     const s1 = this.combat.submissions[p1];
     const s2 = this.combat.submissions[p2];
-    const animal1 = this.players.get(p1)?.animal || "Neptuno";
-    const animal2 = this.players.get(p2)?.animal || "Salamander";
+    const animal1 = this.combat.pets[p1];
+    const animal2 = this.combat.pets[p2];
 
-    // Daño residual por quemadura
     let burnDmg1 = 0, burnDmg2 = 0;
-    if (this.combat.status[p1] === "QUEMADO") { 
-      burnDmg1 = BURN_DAMAGE; 
-      this.combat.hp[p1] = Math.max(0, this.combat.hp[p1] - BURN_DAMAGE); 
+    if (this.combat.status[p1] === "QUEMADO") {
+      burnDmg1 = BURN_DAMAGE;
+      this.combat.hp[p1] = Math.max(0, this.combat.hp[p1] - BURN_DAMAGE);
     }
-    if (this.combat.status[p2] === "QUEMADO") { 
-      burnDmg2 = BURN_DAMAGE; 
-      this.combat.hp[p2] = Math.max(0, this.combat.hp[p2] - BURN_DAMAGE); 
+    if (this.combat.status[p2] === "QUEMADO") {
+      burnDmg2 = BURN_DAMAGE;
+      this.combat.hp[p2] = Math.max(0, this.combat.hp[p2] - BURN_DAMAGE);
     }
 
-    // Cálculo de daño con matriz elemental y afinidad
-    const res1 = calcDamage(s1.attack, s1.charged, animal1, s2.attack, this.combat.status[p2]);
-    const res2 = calcDamage(s2.attack, s2.charged, animal2, s1.attack, this.combat.status[p1]);
+    const res1 = calcDamage(s1.attack, s1.charged, animal1, s2.attack, this.combat.status[p2], this.combat.dmgBonus[p1]);
+    const res2 = calcDamage(s2.attack, s2.charged, animal2, s1.attack, this.combat.status[p1], this.combat.dmgBonus[p2]);
 
     let dmg1 = res1.damage;
     let dmg2 = res2.damage;
 
-    // Efecto de congelación (reduce daño recibido 25%)
     if (this.combat.status[p1] === "CONGELADO") dmg2 = Math.floor(dmg2 * FREEZE_DAMAGE_REDUCTION);
     if (this.combat.status[p2] === "CONGELADO") dmg1 = Math.floor(dmg1 * FREEZE_DAMAGE_REDUCTION);
 
     this.combat.hp[p1] = Math.max(0, this.combat.hp[p1] - dmg2);
     this.combat.hp[p2] = Math.max(0, this.combat.hp[p2] - dmg1);
 
-    // Aplicar efectos por ataques cargados
     if (s1.charged) { const e = getEffectForCharged(s1.attack); if (e !== "NINGUNO") this.combat.status[p2] = e; }
     if (s2.charged) { const e = getEffectForCharged(s2.attack); if (e !== "NINGUNO") this.combat.status[p1] = e; }
 
@@ -258,23 +520,23 @@ class Room {
 
     const result = {
       round: this.combat.round,
-      p1: { 
-        attack: s1.attack, 
-        charged: s1.charged, 
-        damage: dmg1, 
-        hp: this.combat.hp[p1], 
-        status: this.combat.status[p1], 
+      p1: {
+        attack: s1.attack,
+        charged: s1.charged,
+        damage: dmg1,
+        hp: this.combat.hp[p1],
+        status: this.combat.status[p1],
         burnDmg: burnDmg1,
-        efectividad: res1.efectividad 
+        efectividad: res1.efectividad
       },
-      p2: { 
-        attack: s2.attack, 
-        charged: s2.charged, 
-        damage: dmg2, 
-        hp: this.combat.hp[p2], 
-        status: this.combat.status[p2], 
+      p2: {
+        attack: s2.attack,
+        charged: s2.charged,
+        damage: dmg2,
+        hp: this.combat.hp[p2],
+        status: this.combat.status[p2],
         burnDmg: burnDmg2,
-        efectividad: res2.efectividad 
+        efectividad: res2.efectividad
       },
     };
 
@@ -305,7 +567,6 @@ class Room {
       });
     });
 
-    // Comprobar condiciones de fin
     if (this.combat.hp[p1] <= 0 || this.combat.hp[p2] <= 0 || this.combat.round >= MAX_ROUNDS) {
       setTimeout(() => this.endMatch(), 1000);
     } else {
@@ -319,16 +580,41 @@ class Room {
     clearTimeout(this.turnTimer);
     const ids = this.getPlayerIds();
     let winner = null;
-    if (reason === "opponent_left") { 
-      winner = ids[0]; 
+    if (reason === "opponent_left") {
+      winner = ids[0];
     } else if (this.combat) {
       const hp1 = this.combat.hp[ids[0]], hp2 = this.combat.hp[ids[1]];
       if (hp1 > hp2) winner = ids[0];
       else if (hp2 > hp1) winner = ids[1];
       else winner = "draw";
     }
+
+    // —— Fase 4: registrar resultados en cuentas autenticadas ——
+    const progress = {};
     for (const id of ids) {
-      sendTo(id, "match_ended", { winner, reason, hp: this.combat?.hp[id] || 0 });
+      const j = jugadores.get(id);
+      if (!j?.username) continue;
+      const result = winner === "draw" ? "draw" : winner === id ? "win" : "loss";
+      progress[id] = applyMatchResult(j.username, {
+        result,
+        pet: this.combat?.pets[id],
+        opponent: this.combat?.pets[this.getOpponent(id)],
+        vsAI: false,
+      });
+    }
+
+    for (const id of ids) {
+      const prog = progress[id];
+      sendTo(id, "match_ended", {
+        winner,
+        reason,
+        hp: this.combat?.hp[id] || 0,
+        xpGain: prog ? prog.xpGain : 0,
+        leveledUp: prog ? prog.leveledUp : false,
+        newLevel: prog ? prog.newProfile.level : null,
+        newTitle: prog ? prog.newProfile.title : null,
+        profile: prog ? prog.newProfile : null,
+      });
       const p = jugadores.get(id); if (p) p.roomCode = null;
     }
     rooms.delete(this.code);
@@ -356,6 +642,7 @@ function handleRoomEvent(jugador, type, payload) {
       if (room.state !== "waiting") { send(jugador.ws, "error", { message: "La partida ya empezó" }); return; }
       room.addPlayer(jugador.id);
       jugador.roomCode = code;
+      // Notifica a TODOS (ambos clientes necesitan players===2 para pasar a selección)
       const ids = room.getPlayerIds();
       for (const id of ids) {
         sendTo(id, "room_joined", { code, players: room.players.size, host: id === ids[0] });
@@ -385,11 +672,16 @@ function handleRoomEvent(jugador, type, payload) {
       const room = rooms.get(jugador.roomCode);
       if (!room) return;
       const p = room.players.get(jugador.id);
-      if (p) { p.ready = true; p.animal = payload.animal || null; }
-      for (const id of room.getPlayerIds()) {
-        sendTo(id, "player_ready", { id: jugador.id, animal: p?.animal });
+      if (p) {
+        p.ready = true;
+        p.animal = payload.animal || null;
+        // El servidor confía en su propia DB si el jugador está autenticado
+        p.level = jugador.level;
       }
-      if (room.isFull() && [...room.players.values()].every((p) => p.ready)) {
+      for (const id of room.getPlayerIds()) {
+        sendTo(id, "player_ready", { id: jugador.id, animal: p?.animal, level: p?.level || 1 });
+      }
+      if (room.isFull() && [...room.players.values()].every((pl) => pl.ready)) {
         room.startMatch();
       }
       break;
@@ -416,6 +708,7 @@ function handleLegacyEvent(jugador, type, payload) {
     case "join": {
       const nombre = typeof payload.animal === "string" ? payload.animal.trim() : "";
       if (!nombre || nombre.length > 32) { send(jugador.ws, "error", { message: "Nombre inválido" }); return; }
+      if (typeof payload.level === "number") jugador.clientLevel = Math.max(1, Math.min(20, Math.floor(payload.level)));
       jugador.asignarMascota(nombre);
       if (typeof payload.x === "number") jugador.x = payload.x;
       if (typeof payload.y === "number") jugador.y = payload.y;
@@ -457,13 +750,27 @@ function handleMessage(jugador, raw) {
   handleLegacyEvent(jugador, type, payload);
 }
 
-// ——— Conexiones ———
-wss.on("connection", (ws) => {
+// ——— Conexiones (con token de sesión en el handshake) ———
+wss.on("connection", (ws, req) => {
   const id = randomUUID();
   const jugador = new Jugador(id, ws);
+
+  // Fase 4: autenticación vía query param ?token=
+  try {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    const token = url.searchParams.get("token");
+    if (token) {
+      const user = getUserByToken(token);
+      if (user) {
+        jugador.authToken = token;
+        jugador.username = findUsernameByUser(user);
+      }
+    }
+  } catch { /* handshake sin token o URL malformada */ }
+
   jugadores.set(id, jugador);
-  send(ws, "welcome", { id });
-  console.log(`[WS] Conectado ${id}. Online: ${jugadores.size}`);
+  send(ws, "welcome", { id, authenticated: !!jugador.username, username: jugador.username });
+  console.log(`[WS] Conectado ${id}${jugador.username ? ` (${jugador.username})` : ""}. Online: ${jugadores.size}`);
 
   ws.on("message", (data) => handleMessage(jugador, data.toString()));
   ws.on("pong", () => { jugador.isAlive = true; jugador.lastPong = Date.now(); });
@@ -494,10 +801,9 @@ const heartbeatTimer = setInterval(() => {
 
 wss.on("close", () => clearInterval(heartbeatTimer));
 
-// ——— Health Endpoint ———
 app.get("/health", (_req, res) => res.json({ ok: true, players: jugadores.size, rooms: rooms.size }));
 
 server.listen(PORT, () => {
   console.log(`Animal Combat server en http://localhost:${PORT}`);
-  console.log(`WebSocket + RoomManager + Combate Autoritativo con Matriz Elemental Pokémon`);
+  console.log(`WebSocket + Rooms + Combate Autoritativo + Persistencia (Fase 4)`);
 });
