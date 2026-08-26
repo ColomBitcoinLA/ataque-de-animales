@@ -123,6 +123,43 @@
           "date": "2026-08-26T15:23:21.515Z"
         }
       ]
+    },
+    "AshKetchum": {
+      "email": "ash.ketchum@gmail.com",
+      "name": "Ash Ketchum",
+      "avatar": null,
+      "provider": "google",
+      "createdAt": "2026-08-26T15:49:05.072Z",
+      "xp": 0,
+      "stats": {
+        "battles": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "history": []
+    },
+    "Nory": {
+      "email": "nory@gmail.com",
+      "name": "Nory",
+      "avatar": null,
+      "provider": "google",
+      "createdAt": "2026-08-26T15:56:26.831Z",
+      "xp": 150,
+      "stats": {
+        "battles": 1,
+        "wins": 1,
+        "losses": 0
+      },
+      "history": [
+        {
+          "result": "win",
+          "pet": "Salamander",
+          "opponent": "Salamander",
+          "vsAI": true,
+          "difficulty": "dificil",
+          "date": "2026-08-26T15:56:58.511Z"
+        }
+      ]
     }
   },
   "sessions": {
@@ -153,6 +190,14 @@
     "a8c84bd685244ab67a8723eca52f2fce88c4c3c1883b58f0367478cf79a4c4a1": {
       "username": "user_1393",
       "expiresAt": 1788362601503
+    },
+    "f12e81c65e4eb81f5b6de63be2aa53939e5dd8c2978ee6e5b74b9474121cbad7": {
+      "username": "AshKetchum",
+      "expiresAt": 1788364145075
+    },
+    "561c68d36b5230cc9a64aa70dfce3d8c181584ef2646045f5222e07bbf4ea436": {
+      "username": "Nory",
+      "expiresAt": 1788364586831
     }
   }
 }

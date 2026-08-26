@@ -93,7 +93,7 @@ export class NetworkClient {
   joinRoom(code) { return this.emit("join_room", { code }); }
   quickMatch() { return this.emit("quick_match"); }
   playerReady(animal) { return this.emit("player_ready", { animal }); }
-  submitAttack(attack, charged) { return this.emit("submit_attack", { attack, charged }); }
+  submitAttack(attack, charged, move) { return this.emit("submit_attack", { attack, charged, move }); }
   leaveRoom() { return this.emit("leave_room"); }
   cancelMatch() { return this.emit("leave_room"); }
 

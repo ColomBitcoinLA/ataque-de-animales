@@ -1,19 +1,19 @@
 import { gameState } from "./core/GameState.js";
 import { GameEngine } from "./core/GameEngine.js";
-import { Animal, createDefaultAnimals } from "./entities/Animal.js";
+import { Animal, createDefaultAnimals, AFINIDAD_ANIMAL } from "./entities/Animal.js";
 import { NetworkClient } from "./network/NetworkClient.js";
-import { UIManager, TIPOS_ATAQUE, FUERZA_ATAQUES, STATUS_EFFECTS } from "./ui/UIManager.js";
+import { UIManager, TIPOS_ATAQUE, STATUS_EFFECTS } from "./ui/UIManager.js";
 import { LobbyManager } from "./ui/LobbyManager.js";
 import { AuthModal } from "./ui/AuthModal.js";
 import { ProfileManager } from "./ui/ProfileManager.js";
+import { SkillLoadout } from "./ui/SkillLoadout.js";
+import { Arena3D, petElement } from "./3d/Arena3D.js";
+import { typeMultiplier, getEffectForCharged, emojiForTipo } from "./core/typeChart.js";
 import { ParticleSystem } from "./fx/ParticleSystem.js";
 import { SoundManager } from "./audio/SoundManager.js";
 import { BotAI } from "./entities/BotAI.js";
 import { Obstacle, generateObstacles } from "./entities/Obstacle.js";
 import { PowerUp, generatePowerUps } from "./entities/PowerUp.js";
-
-const DEBILIDAD_ATAQUES = { FUEGO: "AGUA", AGUA: "TIERRA", TIERRA: "FUEGO" };
-const AFINIDAD_ANIMAL = { Neptuno: "AGUA", Salamander: "FUEGO", Tierrudo: "TIERRA" };
 
 const ui = new UIManager();
 const lobby = new LobbyManager();
@@ -21,6 +21,12 @@ const net = new NetworkClient();
 const particles = new ParticleSystem();
 const sfx = new SoundManager();
 const { list: animales } = createDefaultAnimals();
+
+// —— Fase 5: Loadout de habilidades y Arena 3D ——
+const skillLoadout = new SkillLoadout();
+const arena3D = new Arena3D(document.getElementById("arena-3d"));
+let use3D = localStorage.getItem("animalcombat_3d") === "1";
+let arenaReady = false;
 
 // —— Fase 4: Autenticación y Perfil ——
 const profiles = new ProfileManager();
@@ -263,6 +269,7 @@ net.on("room_joined", (p) => {
       lobby.hide();
       ui.showPhase("SELECCION");
       ui.renderPetCards(animales);
+      renderLoadoutPanel();
       ui.setMessage("Elige tu mascota para la batalla online");
       if (ui.botonMascotaJugador) ui.botonMascotaJugador.disabled = false;
     }, 600);
@@ -350,6 +357,13 @@ net.on("round_resolved", (p) => {
     particles.emitForAttack(p.oppAttack || "FUEGO", cw * 0.3, ch * 0.4);
   }
   
+  // Fase 5: hechizos 3D en combate online
+  if (arenaReady) {
+    if (p.myAttack && p.myAttack !== "ESCUDO") arena3D.castSpell(p.myAttack, "player");
+    if (p.oppAttack && p.oppAttack !== "ESCUDO") arena3D.castSpell(p.oppAttack, "enemy");
+    if (p.oppCharged || p.myCharged) arena3D.impact(true);
+  }
+  
   if (p.oppCharged || p.myCharged) ui.triggerShakeCSS(8, 350);
 
   let effNote = "";
@@ -398,16 +412,7 @@ net.on("match_ended", async (p) => {
 });
 
 function enableAttackButtons() {
-  const tpl = findAnimalTemplate(gameState.nombreMascotaJugador);
-  if (tpl) {
-    ui.renderAttackButtons(
-      tpl.ataques, 
-      onPlayerAttack, 
-      () => gameState.canChargeAttack(), 
-      gameState.getChargedCost(), 
-      () => gameState.apJugador
-    );
-  }
+  ui.renderSkillButtons(skillLoadout.toMoves(), useMove, () => gameState.apJugador);
 }
 
 function syncEnemies(enemigos) {
@@ -505,6 +510,7 @@ function bindAuthButtons() {
 function irALobby() {
   gameState.resetAll();
   if (ui.botonMascotaJugador) ui.botonMascotaJugador.disabled = false;
+  hideArena();
   ui.showPhase("LOBBY");
   lobby.show();
   renderAuthUI();
@@ -580,6 +586,9 @@ function startCombat(enemyName, targetId = null) {
   ui.setupCombatOverlay(); 
   particles.clear();
 
+  // Fase 5: inicializar arena 3D
+  initArena();
+
   if (gameState.isAuthoritative) {
     enableAttackButtons();
   } else {
@@ -594,37 +603,91 @@ function startCombat(enemyName, targetId = null) {
   startCombatRender();
 }
 
-function getEffectForCharged(tipo) {
-  if (tipo === "FUEGO") return "QUEMADO";
-  if (tipo === "AGUA") return "CONGELADO";
-  if (tipo === "TIERRA") return "ENVENENADO";
-  return "NINGUNO";
+// —— Fase 5: Arena 3D ——
+function hideArena() {
+  const el = document.getElementById("arena-3d");
+  if (el) el.style.display = "none";
+  arena3D.hide();
 }
 
-function onPlayerAttack(ataqueJug, emojiJug, charged) {
+async function initArena() {
+  const el = document.getElementById("arena-3d");
+  if (!use3D) { if (el) el.style.display = "none"; arena3D.hide(); arenaReady = false; return; }
+  if (!arenaReady) arenaReady = await arena3D.init();
+  if (arenaReady) {
+    if (el) el.style.display = "block";
+    arena3D.setCombatants(
+      { nombre: gameState.nombreMascotaJugador, element: petElement(gameState.nombreMascotaJugador) },
+      { nombre: gameState.nombreMascotaEnemigo, element: petElement(gameState.nombreMascotaEnemigo) }
+    );
+    arena3D.show();
+  } else if (el) {
+    el.style.display = "none";
+  }
+}
+
+function update3DToggleLabel() {
+  const btn = document.getElementById("btn-toggle-3d");
+  if (btn) btn.textContent = use3D ? "👁️ Vista 3D: ON" : "👁️ Vista 3D: OFF";
+}
+
+/**
+ * Ejecuta un movimiento del loadout (basic/charged/status/shield).
+ * @param {string} moveType
+ * @param {string|null} element
+ */
+function useMove(moveType, element) {
   if (gameState.phase !== "COMBATE") return;
 
-  // Si es Online: Enviar al backend autoritativo y bloquear botones
-  if (gameState.isAuthoritative) {
-    const cost = charged ? gameState.getChargedCost() : gameState.getBasicCost();
-    if (cost > 0 && gameState.apJugador < cost) { 
-      ui.setMessage("⚠️ No tienes suficiente energía para un ataque cargado"); 
-      return; 
+  if (moveType === "shield") {
+    if (gameState.isAuthoritative) {
+      net.submitAttack(null, false, "shield");
+      ui.disableAttacks();
+      ui.setMessage("🛡️ ¡Escudo activado! Esperando al rival...");
+    } else {
+      localAttack(null, null, false, "shield");
     }
-    net.submitAttack(ataqueJug, charged);
-    ui.disableAttacks();
-    ui.setMessage(`⏳ Has lanzado ${emojiJug} ${ataqueJug}${charged ? " ⚡" : ""}. Esperando al rival...`);
     return;
   }
 
-  // Si es Local / Solo vs IA:
-  const cost = charged ? gameState.getChargedCost() : gameState.getBasicCost();
-  if (!gameState.spendAP(cost)) { 
-    ui.setMessage("⚠️ No tienes suficiente energía para este ataque"); 
-    return; 
+  const charged = moveType === "charged";
+  const move = moveType === "status" ? "status" : (charged ? "charged" : "basic");
+  const emoji = emojiForTipo(element);
+
+  if (gameState.isAuthoritative) {
+    const cost = moveType === "status" ? 1 : (charged ? gameState.getChargedCost() : gameState.getBasicCost());
+    if (cost > 0 && gameState.apJugador < cost) { ui.setMessage("⚠️ No tienes suficiente energía"); return; }
+    net.submitAttack(element, charged, move);
+    ui.disableAttacks();
+    ui.setMessage(`⏳ ${emoji} ${element}${charged ? "⚡" : ""}. Esperando al rival...`);
+    return;
   }
 
-  gameState.ataqueJugador.push(ataqueJug);
+  localAttack(element, emoji, charged, move);
+}
+
+/** Cálculo de daño local (6 tipos + afinidad + bono de nivel). */
+function calcLocalDamage(attackType, charged, attackerPet, defenderType, defenderStatus, move) {
+  let base;
+  if (move === "status") base = 10;
+  else base = charged ? 30 : 20;
+  base += petDmgBonus;
+  if (AFINIDAD_ANIMAL[attackerPet] === attackType) base = Math.floor(base * 1.2);
+  let eff = "";
+  const mult = typeMultiplier(attackType, defenderType);
+  if (mult > 1) { base = Math.floor(base * mult); eff = " 🔥 ¡Súper Efectivo (+50%)!"; }
+  else if (mult < 1) { base = Math.floor(base * mult); eff = mult === 0.75 ? " 🐉 ¡Resistido!" : " 🛡️ Poco Efectivo (-30%)"; }
+  if (defenderStatus === "ENVENENADO") base = Math.floor(base * 1.15);
+  return { dmg: base, eff };
+}
+
+function localAttack(ataqueJug, emojiJug, charged, move) {
+  if (gameState.phase !== "COMBATE") return;
+
+  // Coste según movimiento
+  const cost = move === "shield" ? 1 : move === "status" ? 1 : (charged ? gameState.getChargedCost() : gameState.getBasicCost());
+  if (!gameState.spendAP(cost)) { ui.setMessage("⚠️ No tienes suficiente energía para este movimiento"); return; }
+
   gameState.rondaActual++;
 
   // Selección inteligente del BotAI
@@ -632,41 +695,27 @@ function onPlayerAttack(ataqueJug, emojiJug, charged) {
   const ataqueEnem = botChoice.attack;
   const enemigoCharged = botChoice.charged;
   if (enemigoCharged) gameState.apEnemigo -= 2;
+
+  gameState.ataqueJugador.push(ataqueJug || "ESCUDO");
   gameState.ataqueEnemigo.push(ataqueEnem);
-  if (botAI) botAI.recordRound(ataqueJug, ataqueEnem, charged, enemigoCharged);
+  if (botAI) botAI.recordRound(ataqueJug || "ESCUDO", ataqueEnem, charged, enemigoCharged);
 
-  const emojiEnem = TIPOS_ATAQUE.find((t) => t.nombre === ataqueEnem)?.emoji || "⚔️";
+  const emojiEnem = emojiForTipo(ataqueEnem);
 
-  // Matriz de efectividad elemental y bonus de afinidad
-  let dmgPlayer = charged ? 30 : 20;
-  dmgPlayer += petDmgBonus; // Fase 4: bono de daño por nivel
-  if (AFINIDAD_ANIMAL[gameState.nombreMascotaJugador] === ataqueJug) dmgPlayer = Math.floor(dmgPlayer * 1.2);
-  let playerEff = "";
-  if (FUERZA_ATAQUES[ataqueJug] === ataqueEnem) {
-    dmgPlayer = Math.floor(dmgPlayer * 1.5);
-    playerEff = " 🔥 ¡Súper Efectivo (+50%)!";
-  } else if (DEBILIDAD_ATAQUES[ataqueJug] === ataqueEnem) {
-    dmgPlayer = Math.floor(dmgPlayer * 0.7);
-    playerEff = " 🛡️ Poco Efectivo (-30%)";
+  // Cálculo de daño (el escudo no ataca; reduce 50% el daño recibido)
+  let dmgPlayer = 0, dmgEnemy = 0, playerEff = "", enemyEff = "";
+  if (move !== "shield") {
+    const r = calcLocalDamage(ataqueJug, charged, gameState.nombreMascotaJugador, ataqueEnem, gameState.statusEnemigo, move);
+    dmgPlayer = r.dmg; playerEff = r.eff;
   }
-
-  let dmgEnemy = enemigoCharged ? 30 : 20;
-  if (AFINIDAD_ANIMAL[gameState.nombreMascotaEnemigo] === ataqueEnem) dmgEnemy = Math.floor(dmgEnemy * 1.2);
-  let enemyEff = "";
-  if (FUERZA_ATAQUES[ataqueEnem] === ataqueJug) {
-    dmgEnemy = Math.floor(dmgEnemy * 1.5);
-    enemyEff = " 💥 ¡Rival causó daño Súper Efectivo!";
-  } else if (DEBILIDAD_ATAQUES[ataqueEnem] === ataqueJug) {
-    dmgEnemy = Math.floor(dmgEnemy * 0.7);
-  }
-
-  if (gameState.statusEnemigo === "ENVENENADO") dmgPlayer = Math.floor(dmgPlayer * 1.15);
-  if (gameState.statusJugador === "ENVENENADO") dmgEnemy = Math.floor(dmgEnemy * 0.85);
+  const re = calcLocalDamage(ataqueEnem, enemigoCharged, gameState.nombreMascotaEnemigo, ataqueJug || "NINGUNO", gameState.statusJugador, null);
+  dmgEnemy = re.dmg; enemyEff = re.eff;
+  if (move === "shield") dmgEnemy = Math.floor(dmgEnemy * 0.5);
 
   const realDmgToEnemy = gameState.applyDamage("enemigo", dmgPlayer);
   const realDmgToJugador = gameState.applyDamage("jugador", dmgEnemy);
 
-  if (charged) { const e = getEffectForCharged(ataqueJug); if (e !== "NINGUNO") gameState.applyStatus("enemigo", e); }
+  if ((charged || move === "status") && ataqueJug) { const e = getEffectForCharged(ataqueJug); if (e !== "NINGUNO") gameState.applyStatus("enemigo", e); }
   if (enemigoCharged) { const e = getEffectForCharged(ataqueEnem); if (e !== "NINGUNO") gameState.applyStatus("jugador", e); }
 
   const burnJ = gameState.applyBurnTick("jugador");
@@ -681,31 +730,42 @@ function onPlayerAttack(ataqueJug, emojiJug, charged) {
   ui.updateStatus("enemigo", gameState.statusEnemigo);
 
   const rn = gameState.ataqueJugador.length;
-  if (charged) ui.addChargedAttackLine("jugador", rn, emojiJug, STATUS_EFFECTS[getEffectForCharged(ataqueJug)]?.label || "");
+  if (move === "shield") ui.addAttackLine("jugador", rn, "🛡️");
+  else if (charged || move === "status") ui.addChargedAttackLine("jugador", rn, emojiJug, STATUS_EFFECTS[getEffectForCharged(ataqueJug)]?.label || "");
   else ui.addAttackLine("jugador", rn, emojiJug);
-  
+
   if (enemigoCharged) ui.addChargedAttackLine("enemigo", rn, emojiEnem, STATUS_EFFECTS[getEffectForCharged(ataqueEnem)]?.label || "");
   else ui.addAttackLine("enemigo", rn, emojiEnem);
 
-  sfx.playAttack(ataqueJug);
-  if (combatCtx) { 
-    const cw = ui.combatCanvasOverlay.width, ch = ui.combatCanvasOverlay.height; 
-    particles.emitForAttack(ataqueJug, cw * 0.7, ch * 0.4); 
+  // SFX y VFX
+  if (move !== "shield") { sfx.playAttack(ataqueJug); }
+  if (combatCtx && move !== "shield") {
+    const cw = ui.combatCanvasOverlay.width, ch = ui.combatCanvasOverlay.height;
+    particles.emitForAttack(ataqueJug, cw * 0.7, ch * 0.4);
+  }
+  if (combatCtx) {
+    const cw = ui.combatCanvasOverlay.width, ch = ui.combatCanvasOverlay.height;
     particles.emitForAttack(ataqueEnem, cw * 0.3, ch * 0.4);
   }
   if (charged || enemigoCharged || playerEff || enemyEff) ui.triggerShakeCSS(charged ? 8 : 5, charged ? 350 : 200);
-  
-  if (charged) { 
-    const eff = getEffectForCharged(ataqueJug); 
-    if (eff === "QUEMADO") sfx.playBurn(); 
-    else if (eff === "CONGELADO") sfx.playFreeze(); 
-    else if (eff === "ENVENENADO") sfx.playPoison(); 
+
+  if (charged || move === "status") {
+    const eff = getEffectForCharged(ataqueJug);
+    if (eff === "QUEMADO") sfx.playBurn();
+    else if (eff === "CONGELADO") sfx.playFreeze();
+    else if (eff === "ENVENENADO") sfx.playPoison();
   }
+
+  // Fase 5: hechizos 3D
+  if (arenaReady && move !== "shield") arena3D.castSpell(ataqueJug, "player");
+  if (arenaReady) { arena3D.castSpell(ataqueEnem, "enemy"); }
+  if (arenaReady && (charged || enemigoCharged)) arena3D.impact(true);
+
   if (burnJ > 0) ui.appendMessage(`🔥 ${burnJ} daño de quemadura (tú)`);
   if (burnE > 0) ui.appendMessage(`🔥 ${burnE} daño de quemadura (rival)`);
 
   const res = realDmgToEnemy > realDmgToJugador ? "✅ Ganaste ronda" : realDmgToEnemy < realDmgToJugador ? "❌ Perdiste ronda" : "🤝 Empate";
-  ui.setMessage(`${res} R${rn}: ${emojiJug}${charged ? "⚡" : ""} vs ${emojiEnem}${enemigoCharged ? "⚡" : ""}.${playerEff}${enemyEff}`);
+  ui.setMessage(`${res} R${rn}: ${move === "shield" ? "🛡️" : emojiJug}${charged ? "⚡" : ""} vs ${emojiEnem}${enemigoCharged ? "⚡" : ""}.${playerEff}${enemyEff}`);
   ui.appendMessage(`📊 Ronda ${rn}: Tú ${gameState.hpJugador} HP | Rival ${gameState.hpEnemigo} HP`);
 
   enableAttackButtons();
@@ -752,13 +812,15 @@ function finalizarJuego(msg) {
     const eJ = TIPOS_ATAQUE.find((t) => t.nombre === aJ)?.emoji || "⚔️";
     const eE = TIPOS_ATAQUE.find((t) => t.nombre === aE)?.emoji || "⚔️";
     let r = "🤝", t = "Empate";
-    if (FUERZA_ATAQUES[aJ] === aE) { r = "✅"; t = "Ganaste"; }
-    else if (FUERZA_ATAQUES[aE] === aJ) { r = "❌"; t = "Perdiste"; }
+    const mult = typeMultiplier(aJ, aE);
+    if (mult > 1) { r = "✅"; t = "Ganaste"; }
+    else if (mult < 1) { r = "❌"; t = "Perdiste"; }
     ui.appendMessage(`${r} Ronda ${i + 1}: ${eJ} vs ${eE} - ${t}`);
   }
   
   ui.showFinalMessage(msg);
   stopCombatRender();
+  hideArena();
   gameState.setPhase("FIN");
   ui.showPhase("FIN");
 }
@@ -835,6 +897,7 @@ lobby.onAction((mode, opts) => {
       lobby.hide();
       ui.showPhase("SELECCION");
       ui.renderPetCards(animales);
+      renderLoadoutPanel();
       ui.setMessage(`Modo vs IA (${opts.difficulty.toUpperCase()}): Elige tu mascota`);
       if (ui.botonMascotaJugador) ui.botonMascotaJugador.disabled = false;
       break;
@@ -864,6 +927,24 @@ if (muteBtn) {
     muteBtn.title = m ? "Activar sonido" : "Silenciar sonido"; 
     if (!m) sfx.resume(); 
   });
+}
+
+// —— Fase 5: Toggle Vista 3D / 2D ——
+const toggle3DBtn = document.getElementById("btn-toggle-3d");
+if (toggle3DBtn) {
+  update3DToggleLabel();
+  toggle3DBtn.addEventListener("click", async () => {
+    use3D = !use3D;
+    localStorage.setItem("animalcombat_3d", use3D ? "1" : "0");
+    if (use3D) await initArena();
+    else { hideArena(); arenaReady = false; }
+    update3DToggleLabel();
+  });
+}
+
+// —— Fase 5: Render del loadout en la pantalla de selección ——
+function renderLoadoutPanel() {
+  skillLoadout.render(document.getElementById("skill-loadout-container"));
 }
 
 ui.onMovementControls((dir) => setDirection(dir, true), () => stopMovement());

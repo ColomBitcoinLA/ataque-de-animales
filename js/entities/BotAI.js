@@ -5,8 +5,9 @@
  * - 'dificil': analiza historial del jugador, prioriza ventajas elementales y gestiona AP óptimamente.
  */
 
-const ATTACKS = ["FUEGO", "AGUA", "TIERRA"];
-const FUERZA_ATAQUES = { FUEGO: "TIERRA", AGUA: "FUEGO", TIERRA: "AGUA" };
+import { TIPOS, typeMultiplier } from "../core/typeChart.js";
+
+const ATTACKS = TIPOS;
 const CHARGED_COST = 2;
 
 export class BotAI {
@@ -51,39 +52,37 @@ export class BotAI {
   }
 
   _easyAI() {
-    const attack = ATTACKS[Math.floor(Math.random() * 3)];
+    const attack = ATTACKS[Math.floor(Math.random() * ATTACKS.length)];
     return { attack, charged: false };
   }
 
   _normalAI(currentAP) {
-    const attack = ATTACKS[Math.floor(Math.random() * 3)];
+    const attack = ATTACKS[Math.floor(Math.random() * ATTACKS.length)];
     const canCharge = currentAP >= CHARGED_COST;
     const charged = canCharge && Math.random() < 0.3;
     return { attack, charged };
   }
 
   _hardAI(currentAP) {
-    const attackCounts = { FUEGO: 0, AGUA: 0, TIERRA: 0 };
+    const attackCounts = {};
+    for (const a of ATTACKS) attackCounts[a] = 0;
     const lastN = this.history.slice(-5);
-    for (const h of lastN) attackCounts[h.attack]++;
-    // Predict: use most common player attack, then counter it
-    let predicted = "FUEGO";
+    for (const h of lastN) { if (attackCounts[h.attack] != null) attackCounts[h.attack]++; }
+    // Predict: use most common player attack, then counter it (element que le gana)
+    let predicted = ATTACKS[0];
     let maxCount = 0;
-    for (const [atk, count] of Object.entries(attackCounts)) {
-      if (count > maxCount) { maxCount = count; predicted = atk; }
+    for (const atk of ATTACKS) {
+      if (attackCounts[atk] > maxCount) { maxCount = attackCounts[atk]; predicted = atk; }
     }
-    // Find what beats the predicted attack
-    let bestAttack = "FUEGO";
-    for (const [atk, beats] of Object.entries(FUERZA_ATAQUES)) {
-      if (beats === predicted) { bestAttack = atk; break; }
+    let bestAttack = ATTACKS[Math.floor(Math.random() * ATTACKS.length)];
+    let bestMult = -1;
+    for (const atk of ATTACKS) {
+      const mult = typeMultiplier(atk, predicted);
+      if (mult > bestMult) { bestMult = mult; bestAttack = atk; }
     }
-    // If no pattern, pick randomly
-    if (maxCount === 0) bestAttack = ATTACKS[Math.floor(Math.random() * 3)];
 
     const canCharge = currentAP >= CHARGED_COST;
-    // Charge if: AP is enough AND either 40% chance OR we're losing
-    const myHpRatio = 0.5; // simplified — real tracking would need game state
-    const charged = canCharge && (Math.random() < 0.4 || Math.random() < 0.25);
+    const charged = canCharge && Math.random() < 0.4;
     return { attack: bestAttack, charged };
   }
 }

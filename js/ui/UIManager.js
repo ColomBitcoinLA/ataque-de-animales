@@ -1,40 +1,24 @@
 /** @typedef {'LOBBY' | 'SELECCION' | 'MAPA' | 'COMBATE' | 'FIN'} GamePhase */
 
-const TIPOS_ATAQUE = [
-  { 
-    nombre: "FUEGO", 
-    emoji: "🔥", 
-    id: "botonFuego", 
-    tooltip: "FUEGO: Fuerte contra TIERRA 🌱\nCargado (2 AP): Aplica QUEMADURA 🔥 (daño por turno)" 
-  },
-  { 
-    nombre: "AGUA", 
-    emoji: "💧", 
-    id: "botonAgua", 
-    tooltip: "AGUA: Fuerte contra FUEGO 🔥\nCargado (2 AP): Aplica CONGELACIÓN 💧 (reduce daño recibido 25%)" 
-  },
-  { 
-    nombre: "TIERRA", 
-    emoji: "🌱", 
-    id: "botonTierra", 
-    tooltip: "TIERRA: Fuerte contra AGUA 💧\nCargado (2 AP): Aplica ENVENENAMIENTO 🌱 (reduce ataque rival)" 
-  },
-];
+import { TIPOS_ELEMENTALES, getEffectForCharged } from "../core/typeChart.js";
 
-const FUERZA_ATAQUES = {
-  FUEGO: "TIERRA",
-  AGUA: "FUEGO",
-  TIERRA: "AGUA",
-};
+const TIPOS_ATAQUE = TIPOS_ELEMENTALES.map((t) => ({
+  nombre: t.nombre,
+  emoji: t.emoji,
+  id: "boton" + t.nombre.charAt(0) + t.nombre.slice(1).toLowerCase(),
+  tooltip: t.tooltip,
+}));
 
 const STATUS_EFFECTS = {
   QUEMADO: { emoji: "🔥", label: "Quemado", color: "#ff5722", desc: "Daño residual de 8 HP por turno" },
-  CONGELADO: { emoji: "💧", label: "Congelado", color: "#00bcd4", desc: "Reduce daño recibido un 25%" },
+  CONGELADO: { emoji: "❄️", label: "Congelado", color: "#00bcd4", desc: "Reduce daño recibido un 25%" },
   ENVENENADO: { emoji: "🌱", label: "Envenenado", color: "#8bc34a", desc: "Reduce la efectividad del ataque rival" },
+  PARALIZADO: { emoji: "⚡", label: "Paralizado", color: "#ffdd44", desc: "Reduce daño saliente un 25%" },
+  DRAGONICO: { emoji: "🐉", label: "Aterrado", color: "#ab47bc", desc: "Reduce daño recibido un 25%" },
   NINGUNO: { emoji: "", label: "", color: "transparent", desc: "" },
 };
 
-export { TIPOS_ATAQUE, FUERZA_ATAQUES, STATUS_EFFECTS };
+export { TIPOS_ATAQUE, STATUS_EFFECTS, getEffectForCharged };
 
 /**
  * Manejador centralizado de vistas, botones y mensajes.
@@ -301,6 +285,52 @@ export class UIManager {
         btn.disabled = false;
         btn.style.opacity = "1";
       }
+    }
+  }
+
+  /**
+   * Renderiza los 4 botones del loadout de habilidades.
+   * @param {{ type: string, nombre: string, costo: number, element: string|null, emoji: string }[]} moves
+   * @param {(moveType: string, element: string|null) => void} onAction
+   * @param {() => number} getAP
+   */
+  renderSkillButtons(moves, onAction, getAP) {
+    if (!this.contenedorAtaques) return;
+    this.contenedorAtaques.innerHTML = "";
+    this.botonesAtaques = [];
+
+    for (const mv of moves) {
+      const info = mv.element ? TIPOS_ATAQUE.find((t) => t.nombre === mv.element) : null;
+      const emoji = mv.emoji + (info ? ` ${info.emoji}` : "");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `botonAtaque skill-btn skill-${mv.type}`;
+      if (info) btn.classList.add(`btn-${info.nombre.toLowerCase()}`);
+      btn.dataset.cost = String(mv.costo);
+      btn.dataset.move = mv.type;
+      btn.innerHTML = `<span class="btn-icon">${emoji}</span> <span class="btn-label">${mv.nombre} (${mv.costo} AP)</span>`;
+      btn.setAttribute("data-tooltip", `${mv.nombre} | Costo: ${mv.costo} AP\n${info ? info.tooltip.split("\n")[0] : "Reduce el daño recibido del turno en un 50%"}`);
+
+      btn.addEventListener("click", () => {
+        if (btn.disabled) return;
+        onAction(mv.type, mv.element);
+      });
+
+      this.botonesAtaques.push(btn);
+      this.contenedorAtaques.appendChild(btn);
+    }
+    this._refreshSkillStates(getAP);
+  }
+
+  /**
+   * @param {() => number} getAP
+   */
+  _refreshSkillStates(getAP) {
+    const ap = getAP();
+    for (const btn of this.botonesAtaques) {
+      const cost = parseInt(btn.dataset.cost || "0", 10);
+      btn.disabled = ap < cost;
+      btn.style.opacity = btn.disabled ? "0.45" : "1";
     }
   }
 

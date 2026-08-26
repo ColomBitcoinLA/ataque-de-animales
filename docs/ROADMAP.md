@@ -66,16 +66,18 @@ Este documento define las fases de evolución del juego, desde la refactorizaci�
 
 ---
 
-## 🚀 Fase 5: Visión Futura & Innovación Avanzada (Roadmap Futuro)
-- [ ] **Motor de Batalla 3D (Three.js / WebGL)**:
-  - Escenarios de combate 3D estilo Pokémon Stadium / Colosseum.
-  - Modelos tridimensionales de animales y proyectiles 3D en tiempo real.
-  - Cámaras cinemáticas dinámicas durante el impacto de ataques cargados.
-- [ ] **Árbol de Tipos Elementales Expandido**:
-  - Nuevos elementos: ⚡ **Eléctrico**, ❄️ **Hielo**, 🍃 **Planta**, 💨 **Viento**, 🐉 **Dragón**, 🌑 **Sombra**, ☀️ **Luz**.
-  - Interacciones de debilidades y resistencias compuestas (doble tipo elemental).
-- [ ] **Escalabilidad de Stats por Nivel (RPG Stats Curve)**:
-  - Atributos por nivel: **Ataque (ATK)**, **Defensa (DEF)**, **Velocidad (SPD)** y **Maestría Elemental**.
-  - Las mascotas de nivel superior mitigan la desventaja elemental contra rivales de menor nivel gracias a su defensa y poder acumulado.
-- [ ] **Árbol de Habilidades y Movimientos Personalizables**:
-  - Selección de hasta 4 habilidades activas antes de entrar al combate.
+## 🚀 Fase 5: Visión Futura & Innovación Avanzada (Completada)
+- [x] **Motor de Batalla 3D (Three.js / WebGL)**:
+  - `js/3d/Arena3D.js`: arena circular flotante con césped, rocas y nubes procedurales.
+  - Mascotas como billboards 3D con sombra proyectada, respiración (idle bobbing) y retroceso al recibir daño.
+  - Hechizos 3D: fuego (proyectil esférico con estela), agua (espirales/salpicaduras), tierra (picos emergentes), rayo (iluminación puntual), hielo y dragón.
+  - Cámara cinemática: órbita suave en reposo y zoom de impacto en ataques cargados.
+  - Toggle "👁️ Vista 3D / 2D" para dispositivos de bajos recursos (Three.js cargado por CDN vía import map, con fallback a 2D).
+- [x] **Árbol de Tipos Elementales Expandido a 6 tipos**:
+  - ⚡ Eléctrico (fuerte vs Agua, débil vs Tierra), ❄️ Hielo (fuerte vs Tierra/Dragón, débil vs Fuego), 🐉 Dragón (resiste Fuego/Agua/Eléctrico -25%, débil vs Hielo).
+  - `typeMultiplier` unificado en backend (`index.js`) y frontend (`js/core/typeChart.js`).
+  - Nuevos estados: Paralizado ⚡ (reduce daño saliente) y Aterrado 🐉 (reduce daño recibido).
+- [x] **Arsenal y Loadout de 4 Habilidades** (`js/ui/SkillLoadout.js`):
+  - Ataque Primario Básico (0 AP), Ataque Elemental Cargado (2 AP), Movimiento de Estado/Debuff (1 AP), Escudo (1 AP, reduce 50% daño).
+  - Movimientos `basic`/`charged`/`status`/`shield` soportados por el servidor autoritativo.
+- [x] **Compatibilidad y Rendimiento**: loop a 60 FPS, WebSockets autoritativos sincronizados y OAuth de Google (`/api/auth/google`) integrado con el guardado de progreso.

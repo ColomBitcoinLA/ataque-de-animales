@@ -10,13 +10,14 @@
     <body>
         
         <button id="mute-toggle" class="mute-btn" title="Silenciar sonido">🔊</button>
+        <button id="btn-toggle-3d" class="mute-btn view-toggle-btn" title="Alternar vista 3D/2D">👁️ Vista 3D: OFF</button>
 
         <section id="lobby-section" class="lobby-section">
             <h1 class="tituloPrincipal">Animal Combat</h1>
             <p class="lobby-subtitle">Elige cómo jugar</p>
 
             <div class="auth-bar">
-                <button id="btn-login" class="auth-bar-btn">👤 Iniciar Sesión / Registro</button>
+                <button id="btn-login" class="auth-bar-btn">🌐 Ingresar con Google</button>
                 <button id="btn-profile" class="auth-bar-btn">🏆 Mi Perfil</button>
                 <button id="btn-logout" class="auth-bar-btn hidden">🚪 Cerrar Sesión</button>
             </div>
@@ -59,6 +60,8 @@
                 
             </div>
 
+            <div id="skill-loadout-container" class="skill-loadout-container"></div>
+
             <button id="botonMascota" class="animarBoton">Continuar</button>
         </section>
 
@@ -84,6 +87,8 @@
 
             <h1 class="tituloPrincipal">Animal Combat</h1>
             <h2 class="subtitulo">Elige tu ataque:</h2>
+
+            <div id="arena-3d" class="arena-3d"></div>
 
             <div id="ap-container" class="ap-container">
                 <span class="ap-label">Energía:</span>
@@ -129,6 +134,13 @@
             <canvas id="combat-particles-canvas" class="combat-particles-canvas"></canvas>
         </section>
 
+        <script type="importmap">
+            {
+                "imports": {
+                    "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js"
+                }
+            }
+        </script>
         <script type="module" src="./js/main.js"></script>
     </body>
 </html>

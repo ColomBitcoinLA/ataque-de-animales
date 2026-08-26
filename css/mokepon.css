@@ -838,39 +838,34 @@ body.mapa-activo .contenedor-ataques {
     margin-bottom: 18px;
 }
 
-.auth-tabs {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 18px;
-}
-
-.auth-tab {
-    flex: 1;
-    padding: 9px;
-    cursor: pointer;
-    font-family: "MedievalSharp", cursive;
+.auth-subtitle {
     font-size: 0.92rem;
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--color-texto-muted);
-    border: 1.5px solid transparent;
-    border-radius: 10px;
-    transition: all 0.2s;
+    color: #e2e8f0;
+    text-align: center;
+    margin-bottom: 20px;
+    line-height: 1.4;
 }
 
-.auth-tab.active {
-    background: rgba(10, 233, 138, 0.15);
-    color: var(--color-primario);
-    border-color: var(--color-primario);
-}
-
-.auth-form {
+.google-auth-container {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
 }
 
-.auth-form input {
-    padding: 11px 14px;
+.auth-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+}
+
+.auth-input-group label {
+    font-size: 0.85rem;
+    color: var(--color-texto-muted);
+}
+
+.auth-input-group input {
+    padding: 10px 14px;
     font-family: "MedievalSharp", cursive;
     font-size: 1rem;
     background: rgba(10, 14, 23, 0.9);
@@ -881,9 +876,39 @@ body.mapa-activo .contenedor-ataques {
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.auth-form input:focus {
+.auth-input-group input:focus {
     border-color: var(--color-primario);
     box-shadow: 0 0 12px var(--color-primario-glow);
+}
+
+.btn-google-oauth {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: #ffffff;
+    color: #3c4043;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 12px 20px;
+    border-radius: 24px;
+    border: 1px solid #dadce0;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    transition: all 0.25s ease;
+    margin-top: 4px;
+}
+
+.btn-google-oauth:hover {
+    background: #f8f9fa;
+    box-shadow: 0 6px 20px rgba(66, 133, 244, 0.45);
+    transform: translateY(-2px);
+}
+
+.btn-google-oauth:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .auth-message {
@@ -894,10 +919,6 @@ body.mapa-activo .contenedor-ataques {
 
 .auth-message.auth-error { color: #ff6b6b; }
 .auth-message.auth-success { color: var(--color-primario); }
-
-.auth-submit-btn {
-    margin-top: 4px;
-}
 
 /* —— Tarjeta de Perfil en el Lobby —— */
 .profile-card {
@@ -1032,6 +1053,144 @@ body.mapa-activo .contenedor-ataques {
 
 .history-result { font-weight: bold; }
 .history-detail { color: var(--color-texto-muted); }
+
+/* ============================================================
+   8. FASE 5: ARENA 3D, LOADOUT Y TOGGLE
+   ============================================================ */
+.view-toggle-btn {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    right: auto;
+    width: auto;
+    height: 44px;
+    padding: 0 16px;
+    border-radius: 22px;
+    font-size: 0.95rem;
+    font-family: "MedievalSharp", cursive;
+}
+
+.arena-3d {
+    width: 100%;
+    max-width: 640px;
+    height: 340px;
+    border: 2px solid rgba(10, 233, 138, 0.5);
+    border-radius: 14px;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 50% 20%, #87ceeb 0%, #5a8bbf 60%, #3a5a8f 100%);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    position: relative;
+}
+
+.arena-3d canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* —— Loadout de Habilidades —— */
+.skill-loadout-container {
+    width: min(94vw, 560px);
+    background: rgba(15, 22, 36, 0.92);
+    border: 2px solid var(--color-borde);
+    border-radius: 16px;
+    padding: 14px 18px;
+    margin-top: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+}
+
+.loadout-title {
+    font-size: 1.05rem;
+    color: var(--color-primario);
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.loadout-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.loadout-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.loadout-slot-label {
+    font-size: 0.82rem;
+    color: var(--color-texto-muted);
+}
+
+.loadout-select {
+    padding: 8px 10px;
+    font-family: "MedievalSharp", cursive;
+    font-size: 0.95rem;
+    background: rgba(10, 14, 23, 0.9);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+    cursor: pointer;
+    outline: none;
+}
+
+.loadout-select:focus {
+    border-color: var(--color-primario);
+    box-shadow: 0 0 10px var(--color-primario-glow);
+}
+
+.loadout-fixed {
+    padding: 8px 10px;
+    font-size: 0.85rem;
+    background: rgba(30, 41, 59, 0.7);
+    border-radius: 10px;
+    color: var(--color-texto-muted);
+    text-align: center;
+}
+
+/* Botones de habilidad (4 movimientos) */
+.skill-btn {
+    min-width: 130px;
+}
+
+.skill-shield {
+    background: linear-gradient(135deg, #37474f, #546e7a);
+    border-color: #90a4ae;
+}
+
+.skill-status {
+    background: linear-gradient(135deg, #6a1b9a, #8e24aa);
+    border-color: #ce93d8;
+}
+
+.skill-basic {
+    background: linear-gradient(135deg, #2e7d32, #43a047);
+    border-color: #a5d6a7;
+}
+
+.skill-charged {
+    background: rgba(40, 35, 15, 0.95);
+    border-color: var(--color-ap);
+    color: var(--color-ap);
+}
+
+@media (max-width: 600px) {
+    .arena-3d {
+        height: 220px;
+    }
+    .loadout-grid {
+        grid-template-columns: 1fr;
+    }
+    .view-toggle-btn {
+        top: auto;
+        bottom: 16px;
+        left: 16px;
+        font-size: 0.8rem;
+        height: 38px;
+    }
+}
 
 /* ============================================================
    6. LOBBY / MENÚ PRINCIPAL

@@ -23,6 +23,14 @@ const FREEZE_DAMAGE_REDUCTION = 0.75;
 const POISON_SELF_DAMAGE_MULT = 0.85;
 const POISON_TARGET_VULN_MULT = 1.15;
 
+// ——— Fase 5: Movimientos (Loadout 4 habilidades) ———
+const STATUS_COST = 1;         // Movimiento de Estado / Debuff
+const SHIELD_COST = 1;         // Movimiento Defensivo / Escudo
+const SHIELD_DMG_REDUCTION = 0.5; // reduce 50% el daño recibido
+const STATUS_MOVE_BASE_DMG = 10;
+const PARALYSIS_DMG_MULT = 0.75;   // Paralizado reduce 25% daño saliente
+const DRAGONICO_DMG_REDUCTION = 0.75; // Drágonico reduce 25% daño recibido
+
 // ——— Fase 4: Progresión ———
 const XP_WIN = 100;
 const XP_LOSS = 35;
@@ -57,10 +65,29 @@ function titleForLevel(level) {
 function hpMaxForLevel(level) { return MAX_HP + Math.max(0, level - 1) * HP_PER_LEVEL; }
 function dmgBonusForLevel(level) { return Math.max(0, level - 1) * DMG_PER_LEVEL; }
 
-// Matriz Elemental estilo Pokémon
-const FUERZA_ATAQUES = { FUEGO: "TIERRA", AGUA: "FUEGO", TIERRA: "AGUA" };
-const DEBILIDAD_ATAQUES = { FUEGO: "AGUA", AGUA: "TIERRA", TIERRA: "FUEGO" };
+// Matriz Elemental estilo Pokémon (Fase 5: expandida a 6 tipos)
+const TIPOS = ["FUEGO", "AGUA", "TIERRA", "ELECTRICO", "HIELO", "DRAGON"];
+const TYPE_MATCHUP = {
+  FUEGO: { strong: ["TIERRA"], weak: ["AGUA"] },
+  AGUA: { strong: ["FUEGO"], weak: ["TIERRA"] },
+  TIERRA: { strong: ["AGUA"], weak: ["FUEGO"] },
+  ELECTRICO: { strong: ["AGUA"], weak: ["TIERRA"] },
+  HIELO: { strong: ["TIERRA", "DRAGON"], weak: ["FUEGO"] },
+  DRAGON: { strong: ["DRAGON"], weak: [] },
+};
+const DRAGON_RESISTANCES = ["FUEGO", "AGUA", "ELECTRICO"];
+const DRAGON_RESIST_MULT = 0.75;
 const AFINIDAD_ANIMAL = { Neptuno: "AGUA", Salamander: "FUEGO", Tierrudo: "TIERRA" };
+
+/** Devuelve el multiplicador de daño entre tipos (attacker → defender). */
+function typeMultiplier(attacker, defender) {
+  if (!TIPOS.includes(attacker) || !TIPOS.includes(defender)) return 1;
+  const m = TYPE_MATCHUP[attacker];
+  if (m.strong.includes(defender)) return 1.5;
+  if (m.weak.includes(defender)) return 0.7;
+  if (defender === "DRAGON" && DRAGON_RESISTANCES.includes(attacker)) return DRAGON_RESIST_MULT;
+  return 1;
+}
 
 // ============================================================
 // FASE 4: Base de Datos Local (data/database.json)
@@ -255,6 +282,65 @@ app.post("/api/login", rateLimit, (req, res) => {
   res.json({ ok: true, token, profile: publicProfile(user, username) });
 });
 
+// ——— POST /api/auth/google (OAuth 2.1 / Google Sign-In) ———
+app.post("/api/auth/google", rateLimit, (req, res) => {
+  let { credential, email, name, picture, customUsername } = req.body || {};
+
+  // Decodificar JWT ID Token si viene de Google Identity Services
+  if (credential && typeof credential === "string") {
+    try {
+      const parts = credential.split(".");
+      if (parts.length === 3) {
+        const payloadJson = Buffer.from(parts[1], "base64").toString("utf8");
+        const payload = JSON.parse(payloadJson);
+        email = payload.email || email;
+        name = payload.name || payload.given_name || name;
+        picture = payload.picture || picture;
+      }
+    } catch (e) {
+      console.warn("[OAuth] Error decodificando token Google:", e.message);
+    }
+  }
+
+  // Generar nombre de usuario amigable
+  let baseUsername = (customUsername || name || email?.split("@")[0] || "Guerrero").replace(/[^a-zA-Z0-9_]/g, "").slice(0, 15);
+  if (baseUsername.length < 3) baseUsername = "Trainer_" + randomBytes(2).toString("hex");
+
+  // Buscar usuario existente por email o username
+  let targetUser = null;
+  let finalUsername = baseUsername;
+
+  for (const [uname, u] of Object.entries(db.users)) {
+    if (email && u.email && u.email.toLowerCase() === email.toLowerCase()) {
+      targetUser = u;
+      finalUsername = uname;
+      break;
+    }
+  }
+
+  // Si no existe, crear la cuenta automáticamente (Registro transparente)
+  if (!targetUser) {
+    if (db.users[finalUsername]) {
+      finalUsername = `${baseUsername}_${randomBytes(2).toString("hex")}`;
+    }
+    db.users[finalUsername] = {
+      email: email || `${finalUsername.toLowerCase()}@google.com`,
+      name: name || finalUsername,
+      avatar: picture || null,
+      provider: "google",
+      createdAt: new Date().toISOString(),
+      xp: 0,
+      stats: { battles: 0, wins: 0, losses: 0 },
+      history: [],
+    };
+    targetUser = db.users[finalUsername];
+  }
+
+  const token = createSession(finalUsername);
+  saveDB();
+  res.json({ ok: true, token, profile: publicProfile(targetUser, finalUsername) });
+});
+
 // ——— GET /api/profile ———
 app.get("/api/profile", rateLimit, authMiddleware, (req, res) => {
   res.json({ ok: true, profile: publicProfile(req.user, findUsernameByUser(req.user)) });
@@ -330,11 +416,16 @@ function getEffectForCharged(tipo) {
   if (tipo === "FUEGO") return "QUEMADO";
   if (tipo === "AGUA") return "CONGELADO";
   if (tipo === "TIERRA") return "ENVENENADO";
+  if (tipo === "ELECTRICO") return "PARALIZADO";
+  if (tipo === "HIELO") return "CONGELADO";
+  if (tipo === "DRAGON") return "DRAGONICO";
   return "NINGUNO";
 }
 
-function calcDamage(attackType, charged, animalName, defenderAttack, defenderStatus, attackerDmgBonus = 0) {
-  let base = charged ? CHARGED_BASE_DMG : BASIC_BASE_DMG;
+function calcDamage(attackType, charged, animalName, defenderAttack, defenderStatus, attackerDmgBonus = 0, move = null) {
+  let base;
+  if (move === "status") base = STATUS_MOVE_BASE_DMG;
+  else base = charged ? CHARGED_BASE_DMG : BASIC_BASE_DMG;
 
   // Bonus de nivel del jugador (+2 por nivel)
   base += attackerDmgBonus;
@@ -344,14 +435,15 @@ function calcDamage(attackType, charged, animalName, defenderAttack, defenderSta
     base = Math.floor(base * 1.2);
   }
 
-  // Matriz elemental de efectividad
+  // Matriz elemental de efectividad (6 tipos + resistencia de Dragón)
   let efectividad = "NEUTRAL";
-  if (FUERZA_ATAQUES[attackType] === defenderAttack) {
-    base = Math.floor(base * 1.5);
+  const mult = typeMultiplier(attackType, defenderAttack);
+  if (mult > 1) {
+    base = Math.floor(base * mult);
     efectividad = "SUPER_EFECTIVO";
-  } else if (DEBILIDAD_ATAQUES[attackType] === defenderAttack) {
-    base = Math.floor(base * 0.7);
-    efectividad = "POCO_EFECTIVO";
+  } else if (mult < 1) {
+    base = Math.floor(base * mult);
+    efectividad = mult === DRAGON_RESIST_MULT ? "RESISTIDO" : "POCO_EFECTIVO";
   }
 
   if (defenderStatus === "ENVENENADO") base = Math.floor(base * POISON_TARGET_VULN_MULT);
@@ -447,21 +539,30 @@ class Room {
     this.turnTimer = setTimeout(() => this.resolveTimeout(), TURN_TIMEOUT_MS);
   }
 
-  submitAttack(pid, attack, charged) {
+  submitAttack(pid, attack, charged, move) {
     if (this.state !== "playing" || !this.combat) return;
     if (this.combat.submissions[pid]) return;
 
-    const validAttacks = ["FUEGO", "AGUA", "TIERRA"];
-    if (!validAttacks.includes(attack)) attack = "FUEGO";
-    if (typeof charged !== "boolean") charged = false;
+    // Validar tipo elemental (6 tipos)
+    if (move !== "shield" && !TIPOS.includes(attack)) attack = "FUEGO";
 
-    const cost = charged ? CHARGED_COST : BASIC_COST;
-    if (this.combat.ap[pid] < cost) charged = false;
-    this.combat.ap[pid] -= charged ? CHARGED_COST : BASIC_COST;
+    // Calcular costo según el movimiento
+    let cost;
+    if (move === "shield") cost = SHIELD_COST;
+    else if (move === "status") cost = STATUS_COST;
+    else cost = (typeof charged === "boolean" && charged) ? CHARGED_COST : BASIC_COST;
 
-    this.combat.submissions[pid] = { attack, charged };
+    // Si no tiene AP suficiente, degrada a ataque básico
+    if (this.combat.ap[pid] < cost) { move = undefined; charged = false; cost = 0; }
+    this.combat.ap[pid] -= cost;
 
-    sendTo(pid, "attack_confirmed", { attack, charged });
+    this.combat.submissions[pid] = {
+      attack: move === "shield" ? null : attack,
+      charged: move === "status" ? false : !!charged,
+      move: move || (charged ? "charged" : "basic"),
+    };
+
+    sendTo(pid, "attack_confirmed", { attack: move === "shield" ? null : attack, charged: move === "status" ? false : !!charged, move: move || (charged ? "charged" : "basic") });
     const oppId = this.getOpponent(pid);
     if (oppId) sendTo(oppId, "opponent_attacked", {});
 
@@ -476,7 +577,7 @@ class Room {
     const ids = this.getPlayerIds();
     ids.forEach((id) => {
       if (!this.combat.submissions[id]) {
-        this.combat.submissions[id] = { attack: "FUEGO", charged: false };
+        this.combat.submissions[id] = { attack: "FUEGO", charged: false, move: "basic" };
       }
     });
     this.resolveRound();
@@ -489,6 +590,8 @@ class Room {
     const s2 = this.combat.submissions[p2];
     const animal1 = this.combat.pets[p1];
     const animal2 = this.combat.pets[p2];
+    const shield1 = s1.move === "shield";
+    const shield2 = s2.move === "shield";
 
     let burnDmg1 = 0, burnDmg2 = 0;
     if (this.combat.status[p1] === "QUEMADO") {
@@ -500,43 +603,63 @@ class Room {
       this.combat.hp[p2] = Math.max(0, this.combat.hp[p2] - BURN_DAMAGE);
     }
 
-    const res1 = calcDamage(s1.attack, s1.charged, animal1, s2.attack, this.combat.status[p2], this.combat.dmgBonus[p1]);
-    const res2 = calcDamage(s2.attack, s2.charged, animal2, s1.attack, this.combat.status[p1], this.combat.dmgBonus[p2]);
+    // Cálculo de daño (el que hace escudo no ataca)
+    let dmg1 = 0, dmg2 = 0, eff1 = "NEUTRAL", eff2 = "NEUTRAL";
+    const defType1 = shield1 ? "NINGUNO" : (s1.attack || "NINGUNO");
+    const defType2 = shield2 ? "NINGUNO" : (s2.attack || "NINGUNO");
 
-    let dmg1 = res1.damage;
-    let dmg2 = res2.damage;
+    if (!shield1) {
+      const res = calcDamage(s1.attack, s1.charged, animal1, defType2, this.combat.status[p2], this.combat.dmgBonus[p1], s1.move === "status" ? "status" : null);
+      dmg1 = res.damage; eff1 = res.efectividad;
+    }
+    if (!shield2) {
+      const res = calcDamage(s2.attack, s2.charged, animal2, defType1, this.combat.status[p1], this.combat.dmgBonus[p2], s2.move === "status" ? "status" : null);
+      dmg2 = res.damage; eff2 = res.efectividad;
+    }
 
-    if (this.combat.status[p1] === "CONGELADO") dmg2 = Math.floor(dmg2 * FREEZE_DAMAGE_REDUCTION);
-    if (this.combat.status[p2] === "CONGELADO") dmg1 = Math.floor(dmg1 * FREEZE_DAMAGE_REDUCTION);
+    // Paralizado reduce 25% el daño saliente
+    if (this.combat.status[p1] === "PARALIZADO") dmg1 = Math.floor(dmg1 * PARALYSIS_DMG_MULT);
+    if (this.combat.status[p2] === "PARALIZADO") dmg2 = Math.floor(dmg2 * PARALYSIS_DMG_MULT);
+
+    // Congelado / Drágonico reduce 25% el daño recibido
+    if (this.combat.status[p1] === "CONGELADO" || this.combat.status[p1] === "DRAGONICO") dmg2 = Math.floor(dmg2 * FREEZE_DAMAGE_REDUCTION);
+    if (this.combat.status[p2] === "CONGELADO" || this.combat.status[p2] === "DRAGONICO") dmg1 = Math.floor(dmg1 * FREEZE_DAMAGE_REDUCTION);
+
+    // Escudo reduce 50% el daño recibido
+    if (shield1) dmg2 = Math.floor(dmg2 * SHIELD_DMG_REDUCTION);
+    if (shield2) dmg1 = Math.floor(dmg1 * SHIELD_DMG_REDUCTION);
 
     this.combat.hp[p1] = Math.max(0, this.combat.hp[p1] - dmg2);
     this.combat.hp[p2] = Math.max(0, this.combat.hp[p2] - dmg1);
 
-    if (s1.charged) { const e = getEffectForCharged(s1.attack); if (e !== "NINGUNO") this.combat.status[p2] = e; }
-    if (s2.charged) { const e = getEffectForCharged(s2.attack); if (e !== "NINGUNO") this.combat.status[p1] = e; }
+    // Aplicar efectos por ataques cargados o movimientos de estado
+    if ((s1.charged || s1.move === "status") && s1.attack) { const e = getEffectForCharged(s1.attack); if (e !== "NINGUNO") this.combat.status[p2] = e; }
+    if ((s2.charged || s2.move === "status") && s2.attack) { const e = getEffectForCharged(s2.attack); if (e !== "NINGUNO") this.combat.status[p1] = e; }
 
-    this.combat.history[p1].push(s1.attack);
-    this.combat.history[p2].push(s2.attack);
+    this.combat.history[p1].push(s1.attack || "ESCUDO");
+    this.combat.history[p2].push(s2.attack || "ESCUDO");
 
     const result = {
       round: this.combat.round,
       p1: {
-        attack: s1.attack,
+        attack: s1.attack || "ESCUDO",
         charged: s1.charged,
+        move: s1.move,
         damage: dmg1,
         hp: this.combat.hp[p1],
         status: this.combat.status[p1],
         burnDmg: burnDmg1,
-        efectividad: res1.efectividad
+        efectividad: eff1
       },
       p2: {
-        attack: s2.attack,
+        attack: s2.attack || "ESCUDO",
         charged: s2.charged,
+        move: s2.move,
         damage: dmg2,
         hp: this.combat.hp[p2],
         status: this.combat.status[p2],
         burnDmg: burnDmg2,
-        efectividad: res2.efectividad
+        efectividad: eff2
       },
     };
 
@@ -549,6 +672,7 @@ class Room {
         round: this.combat.round,
         myAttack: myData.attack,
         myCharged: myData.charged,
+        myMove: myData.move,
         myDamage: myData.damage,
         myHp: myData.hp,
         myStatus: myData.status,
@@ -557,6 +681,7 @@ class Room {
 
         oppAttack: oppData.attack,
         oppCharged: oppData.charged,
+        oppMove: oppData.move,
         oppDamage: oppData.damage,
         oppHp: oppData.hp,
         oppStatus: oppData.status,
@@ -688,7 +813,7 @@ function handleRoomEvent(jugador, type, payload) {
     }
     case "submit_attack": {
       const room = rooms.get(jugador.roomCode);
-      if (room) room.submitAttack(jugador.id, payload.attack, payload.charged);
+      if (room) room.submitAttack(jugador.id, payload.attack, payload.charged, payload.move);
       break;
     }
     case "leave_room": {

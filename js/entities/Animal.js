@@ -157,3 +157,16 @@ export function createDefaultAnimals() {
 
   return { neptuno, tierrudo, salamander, list: [neptuno, tierrudo, salamander] };
 }
+
+/**
+ * Afinidad elemental de cada mascota (Fase 5: árbol de 6 tipos).
+ * Los 3 animales base usan sus elementos nativos; los nuevos tipos
+ * (ELECTRICO, HIELO, DRAGON) están disponibles como ataques de loadout.
+ */
+export const AFINIDAD_ANIMAL = {
+  Neptuno: "AGUA",
+  Salamander: "FUEGO",
+  Tierrudo: "TIERRA",
+};
+
+export const ELEMENTOS_DISPONIBLES = ["FUEGO", "AGUA", "TIERRA", "ELECTRICO", "HIELO", "DRAGON"];
