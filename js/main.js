@@ -6,6 +6,7 @@ import { UIManager, TIPOS_ATAQUE, STATUS_EFFECTS } from "./ui/UIManager.js";
 import { LobbyManager } from "./ui/LobbyManager.js";
 import { AuthModal } from "./ui/AuthModal.js";
 import { ProfileManager } from "./ui/ProfileManager.js";
+import { ProfileModal } from "./ui/ProfileModal.js";
 import { SkillLoadout } from "./ui/SkillLoadout.js";
 import { Arena3D, petElement } from "./3d/Arena3D.js";
 import { typeMultiplier, getEffectForCharged, emojiForTipo } from "./core/typeChart.js";
@@ -31,6 +32,15 @@ let arenaReady = false;
 // —— Fase 4: Autenticación y Perfil ——
 const profiles = new ProfileManager();
 let petDmgBonus = 0;
+
+const profileModal = new ProfileModal(profiles, () => {
+  profiles.logout();
+  net.setAuthToken(null);
+  if (net.connected) net.disconnect();
+  net.connect();
+  renderAuthUI();
+});
+
 const authModal = new AuthModal((authState) => {
   if (authState.loggedIn) {
     profiles.state.loggedIn = true;
@@ -357,10 +367,14 @@ net.on("round_resolved", (p) => {
     particles.emitForAttack(p.oppAttack || "FUEGO", cw * 0.3, ch * 0.4);
   }
   
-  // Fase 5: hechizos 3D en combate online
+  // Fase 5: hechizos 3D y textos flotantes en combate online
   if (arenaReady) {
     if (p.myAttack && p.myAttack !== "ESCUDO") arena3D.castSpell(p.myAttack, "player");
     if (p.oppAttack && p.oppAttack !== "ESCUDO") arena3D.castSpell(p.oppAttack, "enemy");
+    if (p.myAttack === "ESCUDO") arena3D.showFloatingText("🛡️ ESCUDO", "player", "#4fc3f7");
+    if (p.oppAttack === "ESCUDO") arena3D.showFloatingText("🛡️ ESCUDO", "enemy", "#4fc3f7");
+    if (p.myDamage > 0) arena3D.showFloatingText(`-${p.myDamage} HP`, "enemy", "#ff5252");
+    if (p.oppDamage > 0) arena3D.showFloatingText(`-${p.oppDamage} HP`, "player", "#ff7043");
     if (p.oppCharged || p.myCharged) arena3D.impact(true);
   }
   
@@ -496,7 +510,9 @@ function renderProfileCard() {
 }
 
 function bindAuthButtons() {
-  document.getElementById("btn-login")?.addEventListener("click", () => authModal.open("login"));
+  document.getElementById("btn-login")?.addEventListener("click", () => authModal.open());
+  document.getElementById("btn-profile")?.addEventListener("click", () => profileModal.open());
+  document.getElementById("profile-card")?.addEventListener("click", () => profileModal.open());
   document.getElementById("btn-logout")?.addEventListener("click", () => {
     profiles.logout();
     net.setAuthToken(null);
@@ -567,8 +583,6 @@ function seleccionarMascota() {
 function startCombat(enemyName, targetId = null) {
   engine.stop();
   stopMovement();
-  window.removeEventListener("keydown", onKeyDown);
-  window.removeEventListener("keyup", onKeyUp);
 
   if (!gameState.isAuthoritative) {
     gameState.nombreMascotaEnemigo = enemyName;
@@ -612,13 +626,20 @@ function hideArena() {
 
 async function initArena() {
   const el = document.getElementById("arena-3d");
-  if (!use3D) { if (el) el.style.display = "none"; arena3D.hide(); arenaReady = false; return; }
+  if (!use3D) { 
+    if (el) el.style.display = "none"; 
+    arena3D.hide(); 
+    arenaReady = false; 
+    return; 
+  }
   if (!arenaReady) arenaReady = await arena3D.init();
   if (arenaReady) {
     if (el) el.style.display = "block";
+    const pName = gameState.nombreMascotaJugador || "Salamander";
+    const eName = gameState.nombreMascotaEnemigo || "Tierrudo";
     arena3D.setCombatants(
-      { nombre: gameState.nombreMascotaJugador, element: petElement(gameState.nombreMascotaJugador) },
-      { nombre: gameState.nombreMascotaEnemigo, element: petElement(gameState.nombreMascotaEnemigo) }
+      { nombre: pName, element: petElement(pName) },
+      { nombre: eName, element: petElement(eName) }
     );
     arena3D.show();
   } else if (el) {
@@ -756,10 +777,15 @@ function localAttack(ataqueJug, emojiJug, charged, move) {
     else if (eff === "ENVENENADO") sfx.playPoison();
   }
 
-  // Fase 5: hechizos 3D
-  if (arenaReady && move !== "shield") arena3D.castSpell(ataqueJug, "player");
-  if (arenaReady) { arena3D.castSpell(ataqueEnem, "enemy"); }
-  if (arenaReady && (charged || enemigoCharged)) arena3D.impact(true);
+  // Fase 5: hechizos 3D y textos flotantes
+  if (arenaReady) {
+    if (move !== "shield" && ataqueJug) arena3D.castSpell(ataqueJug, "player");
+    if (ataqueEnem) arena3D.castSpell(ataqueEnem, "enemy");
+    if (move === "shield") arena3D.showFloatingText("🛡️ ESCUDO (-50%)", "player", "#4fc3f7");
+    if (realDmgToEnemy > 0) arena3D.showFloatingText(`-${realDmgToEnemy} HP${playerEff ? " 🔥" : ""}`, "enemy", "#ff5252");
+    if (realDmgToJugador > 0) arena3D.showFloatingText(`-${realDmgToJugador} HP${enemyEff ? " 💥" : ""}`, "player", "#ff7043");
+    if (charged || enemigoCharged) arena3D.impact(true);
+  }
 
   if (burnJ > 0) ui.appendMessage(`🔥 ${burnJ} daño de quemadura (tú)`);
   if (burnE > 0) ui.appendMessage(`🔥 ${burnE} daño de quemadura (rival)`);
@@ -828,20 +854,52 @@ function finalizarJuego(msg) {
 function onKeyDown(event) {
   if (gameState.phase !== "MAPA") return;
   switch (event.key) { 
-    case "ArrowUp": event.preventDefault(); setDirection("up", true); break; 
-    case "ArrowDown": event.preventDefault(); setDirection("down", true); break; 
-    case "ArrowLeft": event.preventDefault(); setDirection("left", true); break; 
-    case "ArrowRight": event.preventDefault(); setDirection("right", true); break; 
+    case "ArrowUp":
+    case "KeyW":
+    case "w":
+    case "W":
+      event.preventDefault(); setDirection("up", true); break; 
+    case "ArrowDown":
+    case "KeyS":
+    case "s":
+    case "S":
+      event.preventDefault(); setDirection("down", true); break; 
+    case "ArrowLeft":
+    case "KeyA":
+    case "a":
+    case "A":
+      event.preventDefault(); setDirection("left", true); break; 
+    case "ArrowRight":
+    case "KeyD":
+    case "d":
+    case "D":
+      event.preventDefault(); setDirection("right", true); break; 
   }
 }
 
 function onKeyUp(event) {
   if (gameState.phase !== "MAPA") return;
   switch (event.key) { 
-    case "ArrowUp": setDirection("up", false); break; 
-    case "ArrowDown": setDirection("down", false); break; 
-    case "ArrowLeft": setDirection("left", false); break; 
-    case "ArrowRight": setDirection("right", false); break; 
+    case "ArrowUp":
+    case "KeyW":
+    case "w":
+    case "W":
+      setDirection("up", false); break; 
+    case "ArrowDown":
+    case "KeyS":
+    case "s":
+    case "S":
+      setDirection("down", false); break; 
+    case "ArrowLeft":
+    case "KeyA":
+    case "a":
+    case "A":
+      setDirection("left", false); break; 
+    case "ArrowRight":
+    case "KeyD":
+    case "d":
+    case "D":
+      setDirection("right", false); break; 
   }
 }
 

@@ -233,26 +233,26 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 16px;
+    gap: 14px;
     padding: 20px 24px;
-    max-width: 95vw;
+    width: min(95vw, 860px);
     max-height: 94vh;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
     backdrop-filter: blur(14px);
 }
 
 #ver-mapa h1 {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     margin: 0;
 }
 
 #mapa {
-    border: 2px solid rgba(10, 233, 138, 0.6);
-    border-radius: 12px;
+    border: 2.5px solid var(--color-primario);
+    border-radius: 16px;
     display: block;
     max-width: 100%;
     height: auto;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(10, 233, 138, 0.3);
     background: #000;
 }
 
@@ -1064,21 +1064,41 @@ body.mapa-activo .contenedor-ataques {
     right: auto;
     width: auto;
     height: 44px;
-    padding: 0 16px;
+    padding: 0 18px;
     border-radius: 22px;
     font-size: 0.95rem;
+    font-weight: bold;
     font-family: "MedievalSharp", cursive;
+    color: #0ae98a !important;
+    background: rgba(15, 23, 42, 0.95) !important;
+    border: 2px solid #0ae98a !important;
+    box-shadow: 0 4px 16px rgba(10, 233, 138, 0.35);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    z-index: 9999;
+    transition: all 0.25s ease;
+}
+
+.view-toggle-btn:hover {
+    background: rgba(10, 233, 138, 0.25) !important;
+    box-shadow: 0 0 20px rgba(10, 233, 138, 0.6);
+    color: #ffffff !important;
+    transform: scale(1.06);
 }
 
 .arena-3d {
     width: 100%;
-    max-width: 640px;
-    height: 340px;
-    border: 2px solid rgba(10, 233, 138, 0.5);
-    border-radius: 14px;
+    max-width: 860px;
+    height: 400px;
+    border: 2.5px solid rgba(10, 233, 138, 0.6);
+    border-radius: 18px;
     overflow: hidden;
-    background: radial-gradient(ellipse at 50% 20%, #87ceeb 0%, #5a8bbf 60%, #3a5a8f 100%);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    background: radial-gradient(ellipse at 50% 20%, #87ceeb 0%, #5a8bbf 60%, #1e293b 100%);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 30px rgba(10, 233, 138, 0.2);
     position: relative;
 }
 
@@ -1086,6 +1106,70 @@ body.mapa-activo .contenedor-ataques {
     display: block;
     width: 100% !important;
     height: 100% !important;
+}
+
+/* —— Profile Modal Box —— */
+.profile-modal-box {
+    width: min(94vw, 540px) !important;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.profile-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    text-align: left;
+}
+
+.profile-avatar-emblem {
+    font-size: 2.6rem;
+    background: rgba(10, 233, 138, 0.15);
+    border: 2px solid var(--color-primario);
+    border-radius: 50%;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 16px rgba(10, 233, 138, 0.3);
+    flex-shrink: 0;
+}
+
+.profile-name-modal {
+    font-size: 1.35rem;
+    color: var(--color-primario);
+    margin: 0 0 4px 0;
+}
+
+.profile-rpg-bonuses {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.bonus-badge {
+    background: rgba(255, 221, 68, 0.15);
+    border: 1.5px solid var(--color-ap);
+    color: var(--color-ap);
+    padding: 5px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.history-item-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+}
+
+.history-date {
+    font-size: 0.72rem;
+    color: var(--color-texto-muted);
 }
 
 /* —— Loadout de Habilidades —— */

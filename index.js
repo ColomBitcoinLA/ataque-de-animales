@@ -221,6 +221,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
+// Redirección automática de la raíz a mokepon.html
+app.get("/", (req, res) => {
+  res.redirect("/mokepon.html");
+});
+
 const rateMap = new Map();
 function rateLimit(req, res, next) {
   const ip = req.socket.remoteAddress || "unknown";

@@ -469,8 +469,8 @@ export class UIManager {
    * @param {number} [aspectW=800]
    * @param {number} [aspectH=700]
    */
-  resizeCanvas(maxWidth = 600, aspectW = 800, aspectH = 700) {
-    let width = Math.min(window.innerWidth - 40, maxWidth);
+  resizeCanvas(maxWidth = 820, aspectW = 800, aspectH = 680) {
+    let width = Math.min(window.innerWidth - 32, maxWidth);
     if (width < 280) width = 280;
     const height = Math.round((width * aspectH) / aspectW);
     this.mapa.width = width;

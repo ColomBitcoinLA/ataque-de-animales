@@ -144,11 +144,11 @@
       "avatar": null,
       "provider": "google",
       "createdAt": "2026-08-26T15:56:26.831Z",
-      "xp": 150,
+      "xp": 495,
       "stats": {
-        "battles": 1,
-        "wins": 1,
-        "losses": 0
+        "battles": 9,
+        "wins": 2,
+        "losses": 4
       },
       "history": [
         {
@@ -158,6 +158,70 @@
           "vsAI": true,
           "difficulty": "dificil",
           "date": "2026-08-26T15:56:58.511Z"
+        },
+        {
+          "result": "draw",
+          "pet": "Neptuno",
+          "opponent": "Tierrudo",
+          "vsAI": true,
+          "difficulty": "normal",
+          "date": "2026-08-26T19:01:14.336Z"
+        },
+        {
+          "result": "loss",
+          "pet": "Salamander",
+          "opponent": "Tierrudo",
+          "vsAI": true,
+          "difficulty": "normal",
+          "date": "2026-08-26T19:02:05.723Z"
+        },
+        {
+          "result": "win",
+          "pet": "Neptuno",
+          "opponent": "Salamander",
+          "vsAI": true,
+          "difficulty": "normal",
+          "date": "2026-08-26T22:08:34.832Z"
+        },
+        {
+          "result": "draw",
+          "pet": "Tierrudo",
+          "opponent": "Salamander",
+          "vsAI": true,
+          "difficulty": "dificil",
+          "date": "2026-08-26T22:09:25.373Z"
+        },
+        {
+          "result": "loss",
+          "pet": "Salamander",
+          "opponent": "Tierrudo",
+          "vsAI": true,
+          "difficulty": "dificil",
+          "date": "2026-08-26T22:10:07.384Z"
+        },
+        {
+          "result": "draw",
+          "pet": "Neptuno",
+          "opponent": "Salamander",
+          "vsAI": true,
+          "difficulty": "dificil",
+          "date": "2026-08-26T22:10:30.172Z"
+        },
+        {
+          "result": "loss",
+          "pet": "Salamander",
+          "opponent": "Tierrudo",
+          "vsAI": true,
+          "difficulty": "dificil",
+          "date": "2026-08-26T22:11:48.951Z"
+        },
+        {
+          "result": "loss",
+          "pet": "Neptuno",
+          "opponent": "Salamander",
+          "vsAI": true,
+          "difficulty": "normal",
+          "date": "2026-08-26T23:55:50.083Z"
         }
       ]
     }

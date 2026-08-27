@@ -1,24 +1,34 @@
 /**
  * Motor de Batalla 3D (Three.js / WebGL) para la sección de combate.
  * - Arena circular flotante con césped, rocas y nubes procedurales.
- * - Mascotas como sprites/billboards con sombra, respiración y retroceso.
- * - Hechizos 3D: fuego, agua, tierra, rayo.
- * - Cámara cinemática (órbita en reposo, zoom dramático en impactos).
- * - Alternancia Vista 3D / Vista 2D (los dispositivos de bajos recursos usan 2D).
- *
- * Three.js se carga de forma diferida vía import map; si falla, se desactiva
- * automáticamente y el juego sigue en 2D.
+ * - Mascotas como sprites 3D recortados y transparentes (sin círculos sólidos),
+ *   con aros elementales en el suelo, sombras proyectadas y animación de respiración.
+ * - Textos de daño y estado flotantes en 3D ("-30 HP", "🛡️ ESCUDO", "⚡ SÚPER EFECTIVO").
+ * - Hechizos 3D dinámicos: Fuego 🔥, Agua 💧, Tierra 🌱, Rayo ⚡, Hielo ❄️ y Dragón 🐉.
+ * - Cámara cinemática orbital y zoom de impacto dramático en ataques cargados.
+ * - Alternancia fluida Vista 3D / Vista 2D con fallback seguro.
  */
 
 const ELEMENT_STYLE = {
-  FUEGO: { color: 0xff5722, emoji: "🔥" },
-  AGUA: { color: 0x03a9f4, emoji: "💧" },
-  TIERRA: { color: 0x8bc34a, emoji: "🌱" },
-  ELECTRICO: { color: 0xffdd44, emoji: "⚡" },
-  HIELO: { color: 0x80deea, emoji: "❄️" },
-  DRAGON: { color: 0xab47bc, emoji: "🐉" },
+  FUEGO: { color: 0xff5722, hex: "#ff5722", border: "#ff9800", emoji: "🔥" },
+  AGUA: { color: 0x03a9f4, hex: "#03a9f4", border: "#4fc3f7", emoji: "💧" },
+  TIERRA: { color: 0x8bc34a, hex: "#8bc34a", border: "#aed581", emoji: "🌱" },
+  ELECTRICO: { color: 0xffdd44, hex: "#ffdd44", border: "#fff59d", emoji: "⚡" },
+  HIELO: { color: 0x80deea, hex: "#80deea", border: "#b2ebf2", emoji: "❄️" },
+  DRAGON: { color: 0xab47bc, hex: "#ab47bc", border: "#ce93d8", emoji: "🐉" },
 };
-const PET_ELEMENT = { Neptuno: "AGUA", Salamander: "FUEGO", Tierrudo: "TIERRA" };
+
+const PET_IMAGES = {
+  Neptuno: "./assets/cabezaNeptuno.webp",
+  Salamander: "./assets/cabezaSalamander.webp",
+  Tierrudo: "./assets/cabezaTierrudo.webp",
+};
+
+const PET_ELEMENT = {
+  Neptuno: "AGUA",
+  Salamander: "FUEGO",
+  Tierrudo: "TIERRA",
+};
 
 export class Arena3D {
   /**
@@ -34,14 +44,26 @@ export class Arena3D {
     this.camera = null;
     this.playerSprite = null;
     this.enemySprite = null;
+    this.playerRing = null;
+    this.enemyRing = null;
     this.clock = null;
     this.effects = [];
-    this.player = { nombre: "Neptuno", element: "AGUA" };
-    this.enemy = { nombre: "Salamander", element: "FUEGO" };
+    this.floatingTexts = [];
+    this.player = { nombre: "Salamander", element: "FUEGO" };
+    this.enemy = { nombre: "Tierrudo", element: "TIERRA" };
     this._raf = 0;
-    this._lastTime = 0;
     this._recoil = { player: 0, enemy: 0 };
     this._impactTime = 0;
+    this._imageCache = new Map();
+    this._preloadImages();
+  }
+
+  _preloadImages() {
+    for (const [name, src] of Object.entries(PET_IMAGES)) {
+      const img = new Image();
+      img.src = src;
+      this._imageCache.set(name, img);
+    }
   }
 
   /** @returns {boolean} WebGL disponible */
@@ -71,27 +93,28 @@ export class Arena3D {
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setSize(this.container.clientWidth || 480, this.container.clientHeight || 320);
+    this.renderer.setSize(this.container.clientWidth || 800, this.container.clientHeight || 420);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.container.appendChild(this.renderer.domElement);
 
     // Escena y cámara
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x87ceeb, 30, 120);
-    this.camera = new THREE.PerspectiveCamera(55, (this.container.clientWidth || 480) / (this.container.clientHeight || 320), 0.1, 200);
-    this.camera.position.set(0, 8, 22);
-    this.camera.lookAt(0, 3, 0);
+    this.scene.fog = new THREE.Fog(0x87ceeb, 28, 120);
+    this.camera = new THREE.PerspectiveCamera(48, (this.container.clientWidth || 800) / (this.container.clientHeight || 420), 0.1, 250);
+    this.camera.position.set(0, 9.5, 25);
+    this.camera.lookAt(0, 3.2, 0);
 
-    // Luces
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-    const dir = new THREE.DirectionalLight(0xffffff, 1.1);
-    dir.position.set(15, 25, 10);
-    dir.castShadow = true;
-    dir.shadow.mapSize.set(1024, 1024);
-    this.scene.add(dir);
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x8b9bb4, 0.5);
-    this.scene.add(hemi);
+    // Iluminación
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+    const dirLight = new THREE.DirectionalLight(0xfff8ee, 1.25);
+    dirLight.position.set(16, 28, 14);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(1024, 1024);
+    this.scene.add(dirLight);
+
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x64748b, 0.65);
+    this.scene.add(hemiLight);
 
     this._buildArena();
     this._buildClouds();
@@ -107,41 +130,42 @@ export class Arena3D {
 
     // Plataforma circular flotante
     const arena = new THREE.Group();
-    const base = new THREE.CylinderGeometry(12, 13, 2.5, 48);
-    const rockMat = new THREE.MeshStandardMaterial({ color: 0x6b5b45, roughness: 0.9 });
-    const rock = new THREE.Mesh(base, rockMat);
-    rock.position.y = -1.25;
-    rock.castShadow = true; rock.receiveShadow = true;
-    arena.add(rock);
+    const baseGeo = new THREE.CylinderGeometry(14, 15.5, 3.5, 48);
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x544636, roughness: 0.9 });
+    const rockBase = new THREE.Mesh(baseGeo, rockMat);
+    rockBase.position.y = -1.75;
+    rockBase.castShadow = true;
+    rockBase.receiveShadow = true;
+    arena.add(rockBase);
 
     // Césped superior
-    const grass = new THREE.CylinderGeometry(12.2, 12.2, 0.3, 48);
-    const grassMat = new THREE.MeshStandardMaterial({ color: 0x4caf50, roughness: 0.85 });
-    const grassTop = new THREE.Mesh(grass, grassMat);
+    const grassGeo = new THREE.CylinderGeometry(14.2, 14.2, 0.4, 48);
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0x388e3c, roughness: 0.75 });
+    const grassTop = new THREE.Mesh(grassGeo, grassMat);
     grassTop.position.y = 0.05;
     grassTop.receiveShadow = true;
     arena.add(grassTop);
 
-    // Anillo de borde
-    const ring = new THREE.TorusGeometry(12.2, 0.5, 12, 64);
-    const ringMat = new THREE.MeshStandardMaterial({ color: 0x37474f, roughness: 0.5 });
-    const ringMesh = new THREE.Mesh(ring, ringMat);
+    // Anillo perimetral
+    const ringGeo = new THREE.TorusGeometry(14.2, 0.55, 12, 64);
+    const ringMat = new THREE.MeshStandardMaterial({ color: 0x263238, roughness: 0.5 });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
     ringMesh.rotation.x = Math.PI / 2;
-    ringMesh.position.y = 0.2;
+    ringMesh.position.y = 0.22;
     ringMesh.receiveShadow = true;
     arena.add(ringMesh);
 
     // Rocas decorativas alrededor
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const r = 11.5;
-      const rock2 = new THREE.Mesh(
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const r = 13.5;
+      const rockMesh = new THREE.Mesh(
         new THREE.DodecahedronGeometry(0.7 + Math.random() * 0.8),
-        new THREE.MeshStandardMaterial({ color: 0x8d7b64, roughness: 1 })
+        new THREE.MeshStandardMaterial({ color: 0x6d5d4d, roughness: 1 })
       );
-      rock2.position.set(Math.cos(angle) * r, 0.5, Math.sin(angle) * r);
-      rock2.castShadow = true;
-      arena.add(rock2);
+      rockMesh.position.set(Math.cos(angle) * r, 0.5, Math.sin(angle) * r);
+      rockMesh.castShadow = true;
+      arena.add(rockMesh);
     }
 
     this.scene.add(arena);
@@ -152,11 +176,11 @@ export class Arena3D {
     const THREE = this.three;
     const cloudTex = this._makeCloudTexture();
     this.clouds = [];
-    for (let i = 0; i < 7; i++) {
-      const mat = new THREE.SpriteMaterial({ map: cloudTex, transparent: true, opacity: 0.7 });
+    for (let i = 0; i < 9; i++) {
+      const mat = new THREE.SpriteMaterial({ map: cloudTex, transparent: true, opacity: 0.75 });
       const sprite = new THREE.Sprite(mat);
-      sprite.position.set((Math.random() - 0.5) * 80, 18 + Math.random() * 15, (Math.random() - 0.5) * 60 - 10);
-      sprite.scale.set(14 + Math.random() * 10, 8 + Math.random() * 6, 1);
+      sprite.position.set((Math.random() - 0.5) * 95, 16 + Math.random() * 16, (Math.random() - 0.5) * 60 - 12);
+      sprite.scale.set(18 + Math.random() * 12, 10 + Math.random() * 6, 1);
       this.scene.add(sprite);
       this.clouds.push(sprite);
     }
@@ -168,99 +192,205 @@ export class Arena3D {
     const ctx = c.getContext("2d");
     ctx.fillStyle = "rgba(255,255,255,0)";
     ctx.fillRect(0, 0, 128, 64);
-    ctx.fillStyle = "rgba(255,255,255,0.9)";
-    const blobs = [[40, 40, 22], [64, 34, 18], [88, 40, 20], [52, 46, 16]];
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    const blobs = [[36, 40, 22], [64, 32, 20], [92, 40, 22], [52, 44, 18]];
     for (const [x, y, r] of blobs) {
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     }
-    const tex = new this.three.CanvasTexture(c);
-    return tex;
+    return new this.three.CanvasTexture(c);
   }
 
-  _makePetTexture(element) {
+  /**
+   * Genera el sprite transparente de la mascota (sin círculos sólidos de fondo).
+   */
+  _makePetTexture(nombre, element) {
     const THREE = this.three;
     const style = ELEMENT_STYLE[element] || ELEMENT_STYLE.AGUA;
     const c = document.createElement("canvas");
-    c.width = 128; c.height = 128;
+    c.width = 256;
+    c.height = 256;
     const ctx = c.getContext("2d");
-    const grad = ctx.createRadialGradient(64, 64, 8, 64, 64, 62);
-    grad.addColorStop(0, "#ffffff");
-    grad.addColorStop(1, "#" + style.color.toString(16).padStart(6, "0"));
-    ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(64, 64, 60, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "#1a1a1a";
-    ctx.lineWidth = 4;
-    ctx.stroke();
-    ctx.font = "64px serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(style.emoji, 64, 64);
+
     const tex = new THREE.CanvasTexture(c);
     tex.needsUpdate = true;
-    return tex;
-  }
 
-  _makeShadowTexture() {
-    const c = document.createElement("canvas");
-    c.width = 128; c.height = 128;
-    const ctx = c.getContext("2d");
-    const grad = ctx.createRadialGradient(64, 64, 8, 64, 64, 60);
-    grad.addColorStop(0, "rgba(0,0,0,0.6)");
-    grad.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 128, 128);
-    return new this.three.CanvasTexture(c);
+    const renderSprite = (img = null) => {
+      ctx.clearRect(0, 0, 256, 256);
+
+      // Sombra proyectada en la base del personaje
+      const baseShadow = ctx.createRadialGradient(128, 205, 5, 128, 205, 60);
+      baseShadow.addColorStop(0, "rgba(0, 0, 0, 0.45)");
+      baseShadow.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = baseShadow;
+      ctx.beginPath();
+      ctx.ellipse(128, 205, 55, 15, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Ilustración real de la mascota con transparencia completa
+      if (img && img.complete && img.naturalWidth > 0) {
+        ctx.save();
+        // Sombra de silueta brillante con el color del elemento
+        ctx.shadowColor = style.hex;
+        ctx.shadowBlur = 16;
+        ctx.drawImage(img, 28, 20, 200, 185);
+        ctx.restore();
+      } else {
+        // Fallback de carga con emoji grande
+        ctx.font = "bold 95px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = style.hex;
+        ctx.shadowBlur = 18;
+        ctx.fillText(style.emoji, 128, 110);
+      }
+
+      // Placa flotante elegante con nombre y elemento
+      ctx.shadowColor = "transparent";
+      ctx.fillStyle = "rgba(10, 15, 28, 0.9)";
+      ctx.strokeStyle = style.border || "#0ae98a";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.roundRect(28, 216, 200, 34, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = "bold 17px 'MedievalSharp', sans-serif";
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${style.emoji} ${nombre || "Mascota"}`, 128, 233);
+
+      tex.needsUpdate = true;
+    };
+
+    const cachedImg = this._imageCache.get(nombre) || null;
+    if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
+      renderSprite(cachedImg);
+    } else {
+      renderSprite(null);
+      const petSrc = PET_IMAGES[nombre] || `./assets/cabeza${nombre}.webp`;
+      const img = new Image();
+      img.src = petSrc;
+      img.onload = () => {
+        this._imageCache.set(nombre, img);
+        renderSprite(img);
+      };
+    }
+
+    return tex;
   }
 
   _buildCombatants() {
     const THREE = this.three;
 
-    this.playerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this._makePetTexture(this.player.element), transparent: true }));
-    this.playerSprite.scale.set(5, 5, 1);
-    this.playerSprite.position.set(-6, 2.5, 2);
+    // Sprite Jugador (Primer plano izquierdo)
+    const playerMat = new THREE.SpriteMaterial({
+      map: this._makePetTexture(this.player.nombre, this.player.element),
+      transparent: true,
+    });
+    this.playerSprite = new THREE.Sprite(playerMat);
+    this.playerSprite.scale.set(7.5, 7.5, 1);
+    this.playerSprite.position.set(-6.8, 3.5, 2.8);
     this.scene.add(this.playerSprite);
 
-    this.enemySprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this._makePetTexture(this.enemy.element), transparent: true }));
-    this.enemySprite.scale.set(5, 5, 1);
-    this.enemySprite.position.set(6, 2.5, -2);
+    // Sprite Rival (Fondo derecho)
+    const enemyMat = new THREE.SpriteMaterial({
+      map: this._makePetTexture(this.enemy.nombre, this.enemy.element),
+      transparent: true,
+    });
+    this.enemySprite = new THREE.Sprite(enemyMat);
+    this.enemySprite.scale.set(7.5, 7.5, 1);
+    this.enemySprite.position.set(6.8, 3.5, -2.8);
     this.scene.add(this.enemySprite);
 
-    // Sombras proyectadas (discos planos)
-    const shadowTex = this._makeShadowTexture();
-    this.playerShadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(5.5, 5.5),
-      new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false })
-    );
-    this.playerShadow.rotation.x = -Math.PI / 2;
-    this.playerShadow.position.set(-6, 0.35, 2);
-    this.scene.add(this.playerShadow);
+    // Aros elementales luminosos en el suelo de la arena
+    const pStyle = ELEMENT_STYLE[this.player.element] || ELEMENT_STYLE.FUEGO;
+    const eStyle = ELEMENT_STYLE[this.enemy.element] || ELEMENT_STYLE.TIERRA;
 
-    this.enemyShadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(5.5, 5.5),
-      new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false })
+    const ringGeo = new THREE.RingGeometry(2.4, 3.2, 32);
+    
+    this.playerRing = new THREE.Mesh(
+      ringGeo,
+      new THREE.MeshBasicMaterial({ color: pStyle.color, side: THREE.DoubleSide, transparent: true, opacity: 0.75 })
     );
-    this.enemyShadow.rotation.x = -Math.PI / 2;
-    this.enemyShadow.position.set(6, 0.35, -2);
-    this.scene.add(this.enemyShadow);
+    this.playerRing.rotation.x = -Math.PI / 2;
+    this.playerRing.position.set(-6.8, 0.28, 2.8);
+    this.scene.add(this.playerRing);
+
+    this.enemyRing = new THREE.Mesh(
+      ringGeo,
+      new THREE.MeshBasicMaterial({ color: eStyle.color, side: THREE.DoubleSide, transparent: true, opacity: 0.75 })
+    );
+    this.enemyRing.rotation.x = -Math.PI / 2;
+    this.enemyRing.position.set(6.8, 0.28, -2.8);
+    this.scene.add(this.enemyRing);
   }
 
-  /** Actualiza los combatientes. @param {{nombre:string,element:string}} player @param {{nombre:string,element:string}} enemy */
+  /**
+   * Actualiza los combatientes con sus nombres e imágenes reales.
+   * @param {{nombre:string, element:string}} player
+   * @param {{nombre:string, element:string}} enemy
+   */
   setCombatants(player, enemy) {
-    this.player = { ...this.player, ...player };
-    this.enemy = { ...this.enemy, ...enemy };
+    if (player) this.player = { ...this.player, ...player };
+    if (enemy) this.enemy = { ...this.enemy, ...enemy };
+
     if (this.ready) {
-      this.playerSprite.material.map = this._makePetTexture(this.player.element);
+      this.playerSprite.material.map = this._makePetTexture(this.player.nombre, this.player.element);
       this.playerSprite.material.needsUpdate = true;
-      this.enemySprite.material.map = this._makePetTexture(this.enemy.element);
+      this.enemySprite.material.map = this._makePetTexture(this.enemy.nombre, this.enemy.element);
       this.enemySprite.material.needsUpdate = true;
+
+      const pStyle = ELEMENT_STYLE[this.player.element] || ELEMENT_STYLE.FUEGO;
+      const eStyle = ELEMENT_STYLE[this.enemy.element] || ELEMENT_STYLE.TIERRA;
+      if (this.playerRing) this.playerRing.material.color.setHex(pStyle.color);
+      if (this.enemyRing) this.enemyRing.material.color.setHex(eStyle.color);
     }
   }
 
-  /** Lanza un hechizo 3D. @param {string} tipo @param {'player'|'enemy'} side */
+  /**
+   * Muestra un texto de daño / efecto flotante en 3D.
+   * @param {string} text
+   * @param {'player'|'enemy'} targetSide
+   * @param {string} [color='#ffffff']
+   */
+  showFloatingText(text, targetSide, color = "#ffffff") {
+    if (!this.ready) return;
+    const THREE = this.three;
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 64;
+    const ctx = c.getContext("2d");
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = color;
+    ctx.shadowColor = "#000000";
+    ctx.shadowBlur = 8;
+    ctx.fillText(text, 128, 32);
+
+    const tex = new THREE.CanvasTexture(c);
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(6, 1.6, 1);
+
+    const targetPos = targetSide === "player" ? this.playerSprite.position : this.enemySprite.position;
+    sprite.position.copy(targetPos).setY(targetPos.y + 4.5);
+    this.scene.add(sprite);
+
+    this.floatingTexts.push({ sprite, life: 1.6, t: 0 });
+  }
+
+  /**
+   * Lanza un hechizo visual tridimensional.
+   * @param {string} tipo
+   * @param {'player'|'enemy'} side
+   */
   castSpell(tipo, side) {
     if (!this.ready) return;
     const from = side === "player" ? this.playerSprite.position : this.enemySprite.position;
     const to = side === "player" ? this.enemySprite.position : this.playerSprite.position;
+
     switch (tipo) {
       case "FUEGO": this._spawnFireball(from, to); break;
       case "AGUA": this._spawnWater(from, to); break;
@@ -268,87 +398,111 @@ export class Arena3D {
       case "ELECTRICO": this._spawnLightning(to); break;
       case "HIELO": this._spawnIce(from, to); break;
       case "DRAGON": this._spawnDragon(from, to); break;
+      default: this._spawnFireball(from, to); break;
     }
-    // retroceso del objetivo
+
     if (side === "player") this._recoil.enemy = 1;
     else this._recoil.player = 1;
   }
 
   _spawnFireball(from, to) {
     const THREE = this.three;
-    const ball = new THREE.Mesh(new THREE.SphereGeometry(1.1, 16, 16), new THREE.MeshBasicMaterial({ color: 0xff8800 }));
-    ball.position.copy(from); ball.position.y += 1;
+    const ball = new THREE.Mesh(
+      new THREE.SphereGeometry(1.3, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xff5500 })
+    );
+    ball.position.copy(from).setY(from.y + 0.6);
     this.scene.add(ball);
-    const light = new THREE.PointLight(0xff6600, 2.5, 18);
+
+    const light = new THREE.PointLight(0xff4400, 3.5, 22);
     light.position.copy(ball.position);
     this.scene.add(light);
+
     this.effects.push({
-      kind: "projectile", mesh: ball, light, from: from.clone().setY(from.y + 1), to: to.clone().setY(to.y + 1),
-      speed: 16, life: 3, t: 0, trail: [],
+      kind: "projectile",
+      mesh: ball,
+      light,
+      to: to.clone().setY(to.y + 0.6),
+      speed: 19,
+      life: 2.2,
+      t: 0,
     });
   }
 
   _spawnWater(from, to) {
     const THREE = this.three;
-    const origin = from.clone().setY(from.y + 1);
-    for (let i = 0; i < 10; i++) {
-      const drop = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), new THREE.MeshBasicMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.85 }));
+    const origin = from.clone().setY(from.y + 0.6);
+    for (let i = 0; i < 14; i++) {
+      const drop = new THREE.Mesh(
+        new THREE.SphereGeometry(0.5, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0x03a9f4, transparent: true, opacity: 0.9 })
+      );
       drop.position.copy(origin);
       this.scene.add(drop);
-      this.effects.push({ kind: "water", mesh: drop, to: to.clone(), phase: i * 0.6, life: 1.5, t: 0 });
+      this.effects.push({ kind: "water", mesh: drop, to: to.clone(), phase: i * 0.45, life: 1.5, t: 0 });
     }
   }
 
   _spawnEarth(to) {
     const THREE = this.three;
-    for (let i = 0; i < 5; i++) {
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.6, 6), new THREE.MeshStandardMaterial({ color: 0x7a5c3a }));
+    for (let i = 0; i < 7; i++) {
+      const spike = new THREE.Mesh(
+        new THREE.ConeGeometry(0.65, 2.5, 6),
+        new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.9 })
+      );
       spike.position.copy(to);
-      spike.position.x += (Math.random() - 0.5) * 4;
-      spike.position.z += (Math.random() - 0.5) * 4;
+      spike.position.x += (Math.random() - 0.5) * 5;
+      spike.position.z += (Math.random() - 0.5) * 5;
       spike.position.y = -1;
       this.scene.add(spike);
-      this.effects.push({ kind: "earth", mesh: spike, targetY: 2.2, life: 1.2, t: 0 });
+      this.effects.push({ kind: "earth", mesh: spike, targetY: 2.6, life: 1.3, t: 0 });
     }
   }
 
   _spawnLightning(to) {
     const THREE = this.three;
-    const light = new THREE.PointLight(0xffdd44, 8, 30);
-    light.position.copy(to).setY(to.y + 6);
+    const light = new THREE.PointLight(0xffea00, 10, 35);
+    light.position.copy(to).setY(to.y + 7.5);
     this.scene.add(light);
+
     const bolt = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.08, 0.5, 12, 6),
+      new THREE.CylinderGeometry(0.14, 0.7, 15, 6),
       new THREE.MeshBasicMaterial({ color: 0xffffff })
     );
-    bolt.position.copy(to).setY(to.y + 2);
+    bolt.position.copy(to).setY(to.y + 3.5);
     this.scene.add(bolt);
-    this.effects.push({ kind: "lightning", mesh: bolt, light, life: 0.5, t: 0 });
+
+    this.effects.push({ kind: "lightning", mesh: bolt, light, life: 0.55, t: 0 });
   }
 
   _spawnIce(from, to) {
     const THREE = this.three;
-    const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(1, 0), new THREE.MeshStandardMaterial({ color: 0x9ee8ff, emissive: 0x336677, roughness: 0.2 }));
-    crystal.position.copy(from).setY(from.y + 1);
+    const crystal = new THREE.Mesh(
+      new THREE.OctahedronGeometry(1.2, 0),
+      new THREE.MeshStandardMaterial({ color: 0x80deea, emissive: 0x00838f, roughness: 0.1 })
+    );
+    crystal.position.copy(from).setY(from.y + 0.6);
     this.scene.add(crystal);
-    this.effects.push({ kind: "projectile", mesh: crystal, light: null, from: from.clone().setY(from.y + 1), to: to.clone().setY(to.y + 1), speed: 12, life: 3, t: 0, trail: [] });
+    this.effects.push({ kind: "projectile", mesh: crystal, light: null, to: to.clone().setY(to.y + 0.6), speed: 15, life: 2.2, t: 0 });
   }
 
   _spawnDragon(from, to) {
     const THREE = this.three;
-    const orb = new THREE.Mesh(new THREE.SphereGeometry(1.3, 16, 16), new THREE.MeshStandardMaterial({ color: 0xab47bc, emissive: 0x440055 }));
-    orb.position.copy(from).setY(from.y + 1);
+    const orb = new THREE.Mesh(
+      new THREE.SphereGeometry(1.5, 16, 16),
+      new THREE.MeshStandardMaterial({ color: 0xab47bc, emissive: 0x4a148c })
+    );
+    orb.position.copy(from).setY(from.y + 0.6);
     this.scene.add(orb);
-    this.effects.push({ kind: "projectile", mesh: orb, light: null, from: from.clone().setY(from.y + 1), to: to.clone().setY(to.y + 1), speed: 14, life: 3, t: 0, trail: [] });
+    this.effects.push({ kind: "projectile", mesh: orb, light: null, to: to.clone().setY(to.y + 0.6), speed: 17, life: 2.2, t: 0 });
   }
 
-  /** Impacto dramático: zoom de cámara. @param {boolean} charged */
   impact(charged) {
-    this._impactTime = charged ? 0.6 : 0.35;
+    this._impactTime = charged ? 0.7 : 0.45;
   }
 
   _startLoop() {
-    const loop = (now) => {
+    const loop = () => {
       this._raf = requestAnimationFrame(loop);
       const dt = Math.min(0.05, this.clock.getDelta());
       this._update(dt);
@@ -361,43 +515,59 @@ export class Arena3D {
     const THREE = this.three;
     const t = this.clock.elapsedTime;
 
-    // Cámara: órbita suave + zoom de impacto
-    let baseR = 22, baseY = 8;
+    // Cámara cinemática: órbita suave en reposo + zoom dramático
+    let baseR = 25, baseY = 9.5;
     if (this._impactTime > 0) {
       this._impactTime -= dt;
       const p = Math.max(0, this._impactTime);
-      baseR = 22 - 6 * Math.sin(p * 8); // zoom in/out
-      baseY = 8 - 2 * Math.sin(p * 8);
+      baseR = 25 - 8 * Math.sin(p * 8);
+      baseY = 9.5 - 3 * Math.sin(p * 8);
     }
-    const orbitSpeed = 0.15;
+    const orbitSpeed = 0.13;
     this.camera.position.x = Math.sin(t * orbitSpeed) * baseR;
     this.camera.position.z = Math.cos(t * orbitSpeed) * baseR;
     this.camera.position.y = baseY;
-    this.camera.lookAt(0, 3, 0);
+    this.camera.lookAt(0, 3.2, 0);
 
-    // Respiración (idle bobbing) + retroceso
+    // Animación de respiración continua (idle bobbing) + retroceso
     if (this.playerSprite) {
-      const bob = Math.sin(t * 2.2) * 0.25;
+      const bob = Math.sin(t * 2.5) * 0.3;
       const recoil = this._recoil.player;
-      this.playerSprite.position.y = 2.5 + bob - recoil * 1.5;
-      this.playerSprite.position.x = -6 - recoil * 1.8;
+      this.playerSprite.position.y = 3.5 + bob - recoil * 1.8;
+      this.playerSprite.position.x = -6.8 - recoil * 2.2;
       this._recoil.player = Math.max(0, recoil - dt * 4);
     }
     if (this.enemySprite) {
-      const bob = Math.cos(t * 2.2) * 0.25;
+      const bob = Math.cos(t * 2.5) * 0.3;
       const recoil = this._recoil.enemy;
-      this.enemySprite.position.y = 2.5 + bob - recoil * 1.5;
-      this.enemySprite.position.x = 6 + recoil * 1.8;
+      this.enemySprite.position.y = 3.5 + bob - recoil * 1.8;
+      this.enemySprite.position.x = 6.8 + recoil * 2.2;
       this._recoil.enemy = Math.max(0, recoil - dt * 4);
     }
 
-    // Nubes a la deriva
+    // Rotación suave de los aros elementales en el suelo
+    if (this.playerRing) this.playerRing.rotation.z += dt * 0.6;
+    if (this.enemyRing) this.enemyRing.rotation.z += dt * 0.6;
+
+    // Nubes en movimiento
     for (const cloud of this.clouds) {
-      cloud.position.x += dt * 0.8;
-      if (cloud.position.x > 45) cloud.position.x = -45;
+      cloud.position.x += dt * 0.95;
+      if (cloud.position.x > 55) cloud.position.x = -55;
     }
 
-    // Efectos
+    // Textos flotantes 3D
+    for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+      const ft = this.floatingTexts[i];
+      ft.t += dt;
+      ft.sprite.position.y += dt * 2.2;
+      ft.sprite.material.opacity = Math.max(0, 1 - (ft.t / ft.life));
+      if (ft.t >= ft.life) {
+        this.scene.remove(ft.sprite);
+        this.floatingTexts.splice(i, 1);
+      }
+    }
+
+    // Efectos de hechizos en curso
     for (let i = this.effects.length - 1; i >= 0; i--) {
       const e = this.effects[i];
       e.t += dt;
@@ -406,9 +576,8 @@ export class Arena3D {
           const dir = new THREE.Vector3().subVectors(e.to, e.mesh.position).normalize();
           e.mesh.position.add(dir.multiplyScalar(e.speed * dt));
           if (e.light) e.light.position.copy(e.mesh.position);
-          // estela
           const dist = e.mesh.position.distanceTo(e.to);
-          if (dist < 1.2 || e.t > e.life) {
+          if (dist < 1.4 || e.t > e.life) {
             this.scene.remove(e.mesh);
             if (e.light) this.scene.remove(e.light);
             this.effects.splice(i, 1);
@@ -417,16 +586,16 @@ export class Arena3D {
         }
         case "water": {
           const dir = new THREE.Vector3().subVectors(e.to, e.mesh.position);
-          e.mesh.position.add(dir.multiplyScalar(dt * 8));
-          e.mesh.position.y = 2 + Math.sin(e.t * 6 + e.phase) * 1.5;
-          if (e.t > e.life || e.mesh.position.distanceTo(e.to) < 0.5) {
+          e.mesh.position.add(dir.multiplyScalar(dt * 9));
+          e.mesh.position.y = 2 + Math.sin(e.t * 6 + e.phase) * 1.8;
+          if (e.t > e.life || e.mesh.position.distanceTo(e.to) < 0.6) {
             this.scene.remove(e.mesh);
             this.effects.splice(i, 1);
           }
           break;
         }
         case "earth": {
-          e.mesh.position.y = Math.min(e.targetY, e.mesh.position.y + dt * 6);
+          e.mesh.position.y = Math.min(e.targetY, e.mesh.position.y + dt * 8);
           if (e.t > e.life) {
             this.scene.remove(e.mesh);
             this.effects.splice(i, 1);
@@ -445,12 +614,10 @@ export class Arena3D {
     }
   }
 
-  /** Muestra el canvas 3D. */
   show() {
     if (this.renderer?.domElement) this.renderer.domElement.style.display = "block";
   }
 
-  /** Oculta el canvas 3D (vista 2D). */
   hide() {
     if (this.renderer?.domElement) this.renderer.domElement.style.display = "none";
     this.stop();
@@ -462,8 +629,8 @@ export class Arena3D {
 
   resize() {
     if (!this.renderer) return;
-    const w = this.container.clientWidth || 480;
-    const h = this.container.clientHeight || 320;
+    const w = this.container.clientWidth || 800;
+    const h = this.container.clientHeight || 420;
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
@@ -471,7 +638,10 @@ export class Arena3D {
 
   dispose() {
     this.stop();
-    for (const e of this.effects) { if (e.mesh) this.scene?.remove(e.mesh); if (e.light) this.scene?.remove(e.light); }
+    for (const e of this.effects) {
+      if (e.mesh) this.scene?.remove(e.mesh);
+      if (e.light) this.scene?.remove(e.light);
+    }
     this.effects = [];
     if (this.renderer) {
       this.renderer.dispose();
