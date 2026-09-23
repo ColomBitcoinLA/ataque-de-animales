@@ -1,63 +1,45 @@
-# 🐾 Animal Combat — Fase 0
-
-## Estado
+# 🐾 Fase 0 — Estado actualizado
 
 | Bloque | Estado |
 |---|---|
 | F0.1 — Product Vision | 🟢 DEFINIDA |
 | F0.2 — Repository Audit | 🟢 COMPLETADA |
 | F0.3 — Game Design Debate | 🟢 VISIÓN BASE DEFINIDA |
-| F0.4 — MVP World | 🟡 SIGUIENTE |
-| F0.5 — Technical Architecture | ⚪ PENDIENTE DE F0.4 |
+| **F0.4 — MVP World** | 🟢 **ESPECIFICADA** |
+| F0.5 — Technical Architecture | ⚪ SIGUIENTE |
 
-## Documentos
+## F0.4
 
-- [Product Vision](./PRODUCT_VISION.md)
-- [Repository Audit F0](./REPOSITORY_AUDIT_F0.md)
-- [Architecture](./ARCHITECTURE.md)
-- [Roadmap](./ROADMAP.md)
-- [Audit Log](./AUDIT_LOG.md)
+Documento principal: [MVP_WORLD_F0.md](./MVP_WORLD_F0.md)
 
-## Regla de trabajo
+F0.4 define el primer mundo como un experimento de ecosistema pequeño y medible. No fija todavía coordenadas de nivel ni assets definitivos; esas decisiones pertenecen al diseño de nivel y producción posteriores.
 
-**No implementar cambios estructurales durante la auditoría.**
+### Principio
 
-El ciclo oficial será:
+**Grande en sistema, pequeño en contenido.**
 
-Proposal → implementation → tests → review → security → performance → integration.
+### Hipótesis inicial de carga
 
-## Principios congelados
+- 24 jugadores por instancia.
+- 24 mascotas de jugadores.
+- 30 criaturas/NPC dinámicos.
+- 12 NPC humanos.
 
-1. El animal/pet es el protagonista.
-2. El humano acompaña; no combate.
-3. Especie e individuo son conceptos diferentes.
-4. Jugadores, NPC y fauna forman parte del mismo sistema de entidades.
-5. El servidor es la autoridad de la simulación.
-6. El cliente presenta, interpola y captura intención.
-7. El mundo será data-driven.
-8. El combate existente se conserva y se desacopla.
-9. Los modos actuales se integrarán como sistemas del mundo.
-10. El MVP será pequeño en contenido y grande en sistema.
-11. No pay-to-win.
-12. No reescritura total sin evidencia técnica.
+Estos valores son presupuestos de prueba, no capacidad garantizada. Se validarán con pruebas de carga.
 
-## Siguiente objetivo
+### Siguiente paso
 
-**F0.4 — Congelar el MVP World.**
-
-Antes de escribir el nuevo motor de mundo debemos definir con precisión:
-- tamaño inicial;
-- zonas;
-- población concurrente objetivo inicial;
-- criaturas;
-- NPC;
-- fauna;
-- actividades;
-- encuentros;
-- reglas de combate;
-- progresión;
-- economía;
-- límites de simulación;
-- métricas de escalabilidad.
-
-Después de F0.4 se construirá F0.5: arquitectura técnica del nuevo sistema.
+F0.5 — Technical Architecture:
+- contratos de dominio;
+- World/Zone/Entity;
+- Creature/Individual;
+- Behavior;
+- Encounter;
+- Combat;
+- Progression;
+- Network;
+- Persistence;
+- Rendering;
+- observabilidad;
+- seguridad;
+- testing.
