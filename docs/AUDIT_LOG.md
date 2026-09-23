@@ -84,3 +84,36 @@ Este archivo registra el historial de iteraciones, revisiones de código y dict�
 
 ---
 **🏆 Conclusión Final**: El sistema se encuentra 100% pulido, robusto, interactivo y listo para despliegue.
+
+
+## 🔍 Entrada de Auditoría #009 - Fase 0: Visión del Producto + Auditoría del Repositorio
+- **Fecha**: 2026-09-22
+- **Auditoría**: Arquitectura/Producto con inspección directa del código
+- **Estado F0.1**: 🟢 DEFINIDA
+- **Estado F0.2**: 🟢 COMPLETADA
+- **Estado F0.3**: 🟢 VISIÓN BASE DEFINIDA
+- **Estado F0.4**: 🟡 SIGUIENTE
+- **Estado F0.5**: ⚪ PENDIENTE DE F0.4
+
+### Dictamen
+La base actual es funcional y reutilizable, pero está orientada a combate/mapa y no todavía a un mundo vivo persistente. No se recomienda un rewrite total.
+
+### Hallazgos críticos
+1. OAuth Google actual no verifica criptográficamente el ID token.
+2. `/api/report_match` acepta del cliente datos que pueden afectar XP.
+3. Contraseñas usan SHA-256 + salt, no el KDF más apropiado para producción.
+4. CORS está abierto.
+5. `data/database.json` contiene datos de runtime/prueba y sesiones; debe salir del repositorio de producción.
+6. No existe suite de tests real.
+7. Existe una implementación legacy en `js/mokepon.js` junto al cliente modular.
+8. `Arena3D.js` es una presentación de combate 3D inicial, no todavía un mundo 3D jugable.
+
+### Decisiones
+- Conservar combate autoritativo, WebSocket, progresión y conceptos reutilizables.
+- Separar dominio, simulación, red y presentación.
+- Crear Creature/Individual antes de escalar contenido.
+- Diseñar el mundo como datos.
+- Tratar Rooms como instancias de combate/encuentro.
+- No introducir Rust/Go/TypeScript 7 ni nuevos frameworks hasta que la evidencia técnica lo justifique.
+
+Ver `docs/REPOSITORY_AUDIT_F0.md` y `docs/PHASE_0.md`.
