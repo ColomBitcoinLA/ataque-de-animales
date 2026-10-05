@@ -2,9 +2,18 @@ const http = require("http");
 const express = require("express");
 const cors = require("cors");
 const { WebSocketServer } = require("ws");
-const { randomUUID, createHash, randomBytes } = require("crypto");
+const { randomUUID, randomBytes } = require("crypto");
 const fs = require("fs");
 const path = require("path");
+
+const {
+  hashPasswordScrypt,
+  generateSalt,
+  verifyPassword,
+} = require("./lib/security/passwords.js");
+const { verifyGoogleIdToken } = require("./lib/security/google-token.js");
+const { RateLimiter } = require("./lib/security/rate-limiter.js");
+const { createCorsOptions } = require("./lib/security/cors-config.js");
 
 const PORT = process.env.PORT || 8080;
 const HEARTBEAT_INTERVAL_MS = 10_000;
@@ -92,8 +101,8 @@ function typeMultiplier(attacker, defender) {
 // ============================================================
 // FASE 4: Base de Datos Local (data/database.json)
 // ============================================================
-const DATA_DIR = path.join(__dirname, "data");
-const DB_PATH = path.join(DATA_DIR, "database.json");
+const DATA_DIR = process.env.ANIMAL_COMBAT_DATA_DIR || path.join(__dirname, "data");
+const DB_PATH = process.env.ANIMAL_COMBAT_DB_PATH || path.join(DATA_DIR, "database.json");
 
 let db = { users: {}, sessions: {} };
 let saveTimer = null;
@@ -114,7 +123,8 @@ function loadDB() {
 function saveDB(immediate = false) {
   const write = () => {
     try {
-      if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+      const targetDir = path.dirname(DB_PATH);
+      if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
       const tmp = DB_PATH + ".tmp";
       fs.writeFileSync(tmp, JSON.stringify(db, null, 2), "utf8");
       fs.renameSync(tmp, DB_PATH); // escritura atómica
@@ -125,10 +135,6 @@ function saveDB(immediate = false) {
   clearTimeout(saveTimer);
   if (immediate) write();
   else saveTimer = setTimeout(write, 300); // auto-guardado con debounce
-}
-
-function hashPassword(password, salt) {
-  return createHash("sha256").update(salt + ":" + password).digest("hex");
 }
 
 function createSession(username) {
@@ -214,28 +220,57 @@ loadDB();
 process.on("SIGINT", () => { saveDB(true); process.exit(0); });
 
 // ============================================================
-// Express + Rate Limiting básico para /api/
+// Express + Rate Limiting + Security Headers + Safe Static
 // ============================================================
 const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname)));
 
-// Redirección automática de la raíz a mokepon.html
-app.get("/", (req, res) => {
-  res.redirect("/mokepon.html");
+// Reverse proxy configuration: secure default (no blind trust of proxy headers)
+// Only enable trust proxy when explicitly requested via TRUST_PROXY env variable
+const rawTrustProxy = (process.env.TRUST_PROXY || "").trim().toLowerCase();
+if (rawTrustProxy === "true" || rawTrustProxy === "1") {
+  app.set("trust proxy", true);
+} else if (rawTrustProxy === "false" || rawTrustProxy === "0" || rawTrustProxy === "") {
+  app.set("trust proxy", false);
+} else {
+  const numHops = Number(rawTrustProxy);
+  if (!Number.isNaN(numHops)) {
+    app.set("trust proxy", numHops);
+  } else {
+    app.set("trust proxy", process.env.TRUST_PROXY);
+  }
+}
+
+const apiLimiter = new RateLimiter({ windowMs: 60_000, maxRequests: 60 });
+const authLimiter = new RateLimiter({ windowMs: 60_000, maxRequests: 15 });
+const reportMatchLimiter = new RateLimiter({ windowMs: 60_000, maxRequests: 20 });
+
+// Security headers (SEC-12)
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+  next();
 });
 
-const rateMap = new Map();
-function rateLimit(req, res, next) {
-  const ip = req.socket.remoteAddress || "unknown";
-  const now = Date.now();
-  const arr = (rateMap.get(ip) || []).filter((t) => now - t < 60_000);
-  arr.push(now);
-  rateMap.set(ip, arr);
-  if (arr.length > 30) return res.status(429).json({ error: "Demasiadas peticiones" });
-  next();
-}
+// Hardened CORS policy (SEC-06)
+app.use(cors(createCorsOptions()));
+app.use(express.json({ limit: "100kb" }));
+
+// Allowlist-based static serving: only serve public frontend assets (SEC-03)
+app.use("/assets", express.static(path.join(__dirname, "assets"), { dotfiles: "ignore", index: false }));
+app.use("/css", express.static(path.join(__dirname, "css"), { dotfiles: "ignore", index: false }));
+app.use("/js", express.static(path.join(__dirname, "js"), { dotfiles: "ignore", index: false }));
+
+// Servir mokepon.html explícitamente
+app.get("/mokepon.html", (_req, res) => {
+  res.sendFile(path.join(__dirname, "mokepon.html"));
+});
+
+// Redirección de la raíz a mokepon.html
+app.get("/", (_req, res) => {
+  res.redirect("/mokepon.html");
+});
 
 function authMiddleware(req, res, next) {
   const header = req.headers.authorization || "";
@@ -249,7 +284,7 @@ function authMiddleware(req, res, next) {
 }
 
 // ——— POST /api/register ———
-app.post("/api/register", rateLimit, (req, res) => {
+app.post("/api/register", authLimiter.middleware(), async (req, res) => {
   const username = String(req.body?.username || "").trim();
   const password = String(req.body?.password || "");
   if (!/^[a-zA-Z0-9_]{3,16}$/.test(username)) {
@@ -261,10 +296,11 @@ app.post("/api/register", rateLimit, (req, res) => {
   if (db.users[username]) {
     return res.status(409).json({ error: "El usuario ya existe" });
   }
-  const salt = randomBytes(16).toString("hex");
+  const salt = generateSalt();
+  const passwordHash = await hashPasswordScrypt(password, salt);
   db.users[username] = {
     salt,
-    passwordHash: hashPassword(password, salt),
+    passwordHash,
     createdAt: new Date().toISOString(),
     xp: 0,
     stats: { battles: 0, wins: 0, losses: 0 },
@@ -275,40 +311,58 @@ app.post("/api/register", rateLimit, (req, res) => {
   res.json({ ok: true, token, profile: publicProfile(db.users[username], username) });
 });
 
-// ——— POST /api/login ———
-app.post("/api/login", rateLimit, (req, res) => {
+// ——— POST /api/login (SEC-02: scrypt + lazy legacy SHA-256 migration) ———
+app.post("/api/login", authLimiter.middleware(), async (req, res) => {
   const username = String(req.body?.username || "").trim();
   const password = String(req.body?.password || "");
   const user = db.users[username];
-  if (!user || user.passwordHash !== hashPassword(password, user.salt)) {
+  if (!user) {
     return res.status(401).json({ error: "Credenciales incorrectas" });
   }
+
+  const result = await verifyPassword(password, user);
+  if (!result.valid) {
+    return res.status(401).json({ error: "Credenciales incorrectas" });
+  }
+
+  // Migración transparente / lazy de hash legacy SHA-256 a scrypt
+  if (result.needsMigration) {
+    user.salt = result.upgradedSalt;
+    user.passwordHash = result.upgradedHash;
+    saveDB();
+  }
+
   const token = createSession(username);
   res.json({ ok: true, token, profile: publicProfile(user, username) });
 });
 
-// ——— POST /api/auth/google (OAuth 2.1 / Google Sign-In) ———
-app.post("/api/auth/google", rateLimit, (req, res) => {
-  let { credential, email, name, picture, customUsername } = req.body || {};
+// ——— POST /api/auth/google (SEC-01: OAuth 2.1 / Google ID Token cryptographic verification) ———
+app.post("/api/auth/google", authLimiter.middleware(), async (req, res) => {
+  const { credential, customUsername } = req.body || {};
 
-  // Decodificar JWT ID Token si viene de Google Identity Services
-  if (credential && typeof credential === "string") {
-    try {
-      const parts = credential.split(".");
-      if (parts.length === 3) {
-        const payloadJson = Buffer.from(parts[1], "base64").toString("utf8");
-        const payload = JSON.parse(payloadJson);
-        email = payload.email || email;
-        name = payload.name || payload.given_name || name;
-        picture = payload.picture || picture;
-      }
-    } catch (e) {
-      console.warn("[OAuth] Error decodificando token Google:", e.message);
-    }
+  if (!credential || typeof credential !== "string" || credential.trim().length === 0) {
+    return res.status(400).json({ error: "Credencial de Google (ID Token) requerida" });
   }
 
+  const configuredClientId = process.env.GOOGLE_CLIENT_ID;
+  if (!configuredClientId) {
+    return res.status(503).json({ error: "Autenticación con Google no configurada en el servidor" });
+  }
+
+  let verified;
+  try {
+    verified = await verifyGoogleIdToken(credential, configuredClientId);
+  } catch (err) {
+    const status = err.status || 401;
+    return res.status(status).json({ error: err.message || "Token de Google no válido" });
+  }
+
+  const { email, name, picture } = verified;
+
   // Generar nombre de usuario amigable
-  let baseUsername = (customUsername || name || email?.split("@")[0] || "Guerrero").replace(/[^a-zA-Z0-9_]/g, "").slice(0, 15);
+  let baseUsername = (customUsername || name || email?.split("@")[0] || "Guerrero")
+    .replace(/[^a-zA-Z0-9_]/g, "")
+    .slice(0, 15);
   if (baseUsername.length < 3) baseUsername = "Trainer_" + randomBytes(2).toString("hex");
 
   // Buscar usuario existente por email o username
@@ -329,8 +383,8 @@ app.post("/api/auth/google", rateLimit, (req, res) => {
       finalUsername = `${baseUsername}_${randomBytes(2).toString("hex")}`;
     }
     db.users[finalUsername] = {
-      email: email || `${finalUsername.toLowerCase()}@google.com`,
-      name: name || finalUsername,
+      email,
+      name,
       avatar: picture || null,
       provider: "google",
       createdAt: new Date().toISOString(),
@@ -347,7 +401,7 @@ app.post("/api/auth/google", rateLimit, (req, res) => {
 });
 
 // ——— GET /api/profile ———
-app.get("/api/profile", rateLimit, authMiddleware, (req, res) => {
+app.get("/api/profile", apiLimiter.middleware(), authMiddleware, (req, res) => {
   res.json({ ok: true, profile: publicProfile(req.user, findUsernameByUser(req.user)) });
 });
 
@@ -356,21 +410,39 @@ function findUsernameByUser(user) {
   return "";
 }
 
-// ——— POST /api/report_match (combates vs IA desde el cliente autenticado) ———
-app.post("/api/report_match", rateLimit, authMiddleware, (req, res) => {
-  const { result, pet, opponent, vsAI, difficulty } = req.body || {};
+// ——— POST /api/report_match (SEC-05: Combates vs IA con validación robusta) ———
+app.post("/api/report_match", reportMatchLimiter.middleware(), authMiddleware, (req, res) => {
+  const body = req.body;
+  if (!body || typeof body !== "object") {
+    return res.status(400).json({ error: "Payload inválido" });
+  }
+  const { result, pet, opponent, vsAI, difficulty } = body;
   if (!["win", "loss", "draw"].includes(result)) {
     return res.status(400).json({ error: "Resultado inválido" });
   }
+
+  const validDifficulties = ["facil", "normal", "dificil"];
+  const diff = String(difficulty || "normal");
+  if (!validDifficulties.includes(diff)) {
+    return res.status(400).json({ error: "Dificultad inválida" });
+  }
+
+  const petName = typeof pet === "string" ? pet.trim().slice(0, 32) : "?";
+  const oppName = typeof opponent === "string" ? opponent.trim().slice(0, 32) : "?";
+
   const out = applyMatchResult(findUsernameByUser(req.user), {
-    result, pet, opponent, vsAI: !!vsAI, difficulty: String(difficulty || "normal"),
+    result,
+    pet: petName,
+    opponent: oppName,
+    vsAI: Boolean(vsAI),
+    difficulty: diff,
   });
   if (!out) return res.status(500).json({ error: "Error registrando partida" });
   res.json({ ok: true, ...out });
 });
 
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server, maxPayload: 65536 });
 
 // ============================================================
 // Jugadores conectados (WS)
@@ -473,7 +545,12 @@ class Room {
 
   removePlayer(pid) {
     this.players.delete(pid);
-    if (this.players.size === 0) { this.state = "finished"; return true; }
+    if (this.players.size === 0) {
+      this.state = "finished";
+      if (this.turnTimer) clearTimeout(this.turnTimer);
+      rooms.delete(this.code);
+      return true;
+    }
     if (this.state === "playing") this.endMatch("opponent_left");
     return this.players.size === 0;
   }
@@ -765,7 +842,16 @@ function handleRoomEvent(jugador, type, payload) {
       break;
     }
     case "join_room": {
-      const code = (payload.code || "").toUpperCase().trim();
+      const rawCode = payload.code;
+      if (!rawCode || typeof rawCode !== "string") {
+        send(jugador.ws, "error", { message: "Código de sala inválido" });
+        return;
+      }
+      const code = rawCode.toUpperCase().trim();
+      if (!/^[A-Z0-9]{1,8}$/.test(code)) {
+        send(jugador.ws, "error", { message: "Código de sala inválido" });
+        return;
+      }
       const room = rooms.get(code);
       if (!room) { send(jugador.ws, "error", { message: "Sala no encontrada" }); return; }
       if (room.isFull()) { send(jugador.ws, "error", { message: "Sala llena" }); return; }
@@ -800,11 +886,13 @@ function handleRoomEvent(jugador, type, payload) {
     }
     case "player_ready": {
       const room = rooms.get(jugador.roomCode);
-      if (!room) return;
+      if (!room || room.state !== "waiting") return;
       const p = room.players.get(jugador.id);
       if (p) {
         p.ready = true;
-        p.animal = payload.animal || null;
+        p.animal = (typeof payload.animal === "string" && payload.animal.trim().length <= 32)
+          ? payload.animal.trim()
+          : null;
         // El servidor confía en su propia DB si el jugador está autenticado
         p.level = jugador.level;
       }
@@ -818,7 +906,11 @@ function handleRoomEvent(jugador, type, payload) {
     }
     case "submit_attack": {
       const room = rooms.get(jugador.roomCode);
-      if (room) room.submitAttack(jugador.id, payload.attack, payload.charged, payload.move);
+      if (!room || room.state !== "playing") return;
+      const attack = typeof payload.attack === "string" ? payload.attack : null;
+      const charged = Boolean(payload.charged);
+      const move = typeof payload.move === "string" ? payload.move : undefined;
+      room.submitAttack(jugador.id, attack, charged, move);
       break;
     }
     case "leave_room": {
@@ -838,26 +930,36 @@ function handleLegacyEvent(jugador, type, payload) {
     case "join": {
       const nombre = typeof payload.animal === "string" ? payload.animal.trim() : "";
       if (!nombre || nombre.length > 32) { send(jugador.ws, "error", { message: "Nombre inválido" }); return; }
-      if (typeof payload.level === "number") jugador.clientLevel = Math.max(1, Math.min(20, Math.floor(payload.level)));
+      if (typeof payload.level === "number" && Number.isFinite(payload.level)) {
+        jugador.clientLevel = Math.max(1, Math.min(20, Math.floor(payload.level)));
+      }
       jugador.asignarMascota(nombre);
-      if (typeof payload.x === "number") jugador.x = payload.x;
-      if (typeof payload.y === "number") jugador.y = payload.y;
+      if (typeof payload.x === "number" && Number.isFinite(payload.x)) jugador.x = payload.x;
+      if (typeof payload.y === "number" && Number.isFinite(payload.y)) jugador.y = payload.y;
       send(jugador.ws, "joined", { id: jugador.id, enemigos: getEnemigos(jugador.id) });
       for (const j of jugadores.values()) { if (j.id !== jugador.id) send(j.ws, "player_joined", jugador.toPublic()); }
       break;
     }
     case "move": {
       const { x, y } = payload;
-      if (typeof x !== "number" || typeof y !== "number") { send(jugador.ws, "error", { message: "Coords inválidas" }); return; }
+      if (typeof x !== "number" || !Number.isFinite(x) || typeof y !== "number" || !Number.isFinite(y)) {
+        send(jugador.ws, "error", { message: "Coords inválidas" });
+        return;
+      }
       jugador.actualizarPosicion(x, y);
       for (const j of jugadores.values()) { if (j.id !== jugador.id) send(j.ws, "player_moved", { id: jugador.id, x, y, mascota: jugador.mascota }); }
       send(jugador.ws, "enemies", { enemigos: getEnemigos(jugador.id) });
       break;
     }
     case "start_combat": {
-      for (const j of jugadores.values()) { send(j.ws, "combat_started", { attackerId: jugador.id, targetId: payload.targetId, enemyName: payload.enemyName }); }
+      const targetId = typeof payload.targetId === "string" ? payload.targetId.slice(0, 64) : "";
+      const enemyName = typeof payload.enemyName === "string" ? payload.enemyName.slice(0, 32) : "";
+      for (const j of jugadores.values()) { send(j.ws, "combat_started", { attackerId: jugador.id, targetId, enemyName }); }
       break;
     }
+    default:
+      // Unknown message type ignored safely without crashing
+      break;
   }
 }
 
@@ -870,14 +972,41 @@ function getEnemigos(jugadorId) {
 // ——— Mensaje Central ———
 function handleMessage(jugador, raw) {
   let msg;
-  try { msg = JSON.parse(raw); } catch { send(jugador.ws, "error", { message: "JSON inválido" }); return; }
-  const { type, payload = {} } = msg;
-  if (!type || typeof type !== "string") { send(jugador.ws, "error", { message: "Sin type" }); return; }
+  try {
+    msg = JSON.parse(raw);
+  } catch {
+    send(jugador.ws, "error", { message: "JSON inválido" });
+    return;
+  }
+  if (!msg || typeof msg !== "object" || Array.isArray(msg)) {
+    send(jugador.ws, "error", { message: "Payload no es un objeto válido" });
+    return;
+  }
+  const { type } = msg;
+  if (!type || typeof type !== "string" || type.length > 64) {
+    send(jugador.ws, "error", { message: "Sin type" });
+    return;
+  }
+
+  const payload = (msg.payload && typeof msg.payload === "object" && !Array.isArray(msg.payload))
+    ? msg.payload
+    : {};
 
   const roomTypes = ["create_room", "join_room", "quick_match", "player_ready", "submit_attack", "leave_room"];
-  if (roomTypes.includes(type)) { handleRoomEvent(jugador, type, payload); return; }
+  if (roomTypes.includes(type)) {
+    try {
+      handleRoomEvent(jugador, type, payload);
+    } catch {
+      send(jugador.ws, "error", { message: "Error procesando evento de sala" });
+    }
+    return;
+  }
 
-  handleLegacyEvent(jugador, type, payload);
+  try {
+    handleLegacyEvent(jugador, type, payload);
+  } catch {
+    send(jugador.ws, "error", { message: "Error procesando evento" });
+  }
 }
 
 // ——— Conexiones (con token de sesión en el handshake) ———
@@ -929,7 +1058,31 @@ const heartbeatTimer = setInterval(() => {
   }
 }, HEARTBEAT_INTERVAL_MS);
 
-wss.on("close", () => clearInterval(heartbeatTimer));
+function cleanupTimers() {
+  clearInterval(heartbeatTimer);
+  apiLimiter.destroy();
+  authLimiter.destroy();
+  reportMatchLimiter.destroy();
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+}
+
+wss.on("close", cleanupTimers);
+server.on("close", cleanupTimers);
+
+process.on("SIGINT", () => {
+  saveDB(true);
+  cleanupTimers();
+  process.exit(0);
+});
+
+process.on("SIGTERM", () => {
+  saveDB(true);
+  cleanupTimers();
+  process.exit(0);
+});
 
 app.get("/health", (_req, res) => res.json({ ok: true, players: jugadores.size, rooms: rooms.size }));
 
