@@ -21,8 +21,11 @@
     "test:integration": "node --test \"tests/integration/*.test.cjs\"",
     "test:security": "node --test \"tests/integration/security.test.cjs\" \"tests/unit/*.test.cjs\"",
     "perf:baseline": "node scripts/perf-baseline.cjs",
-    "check": "node --check index.js lib/security/*.js scripts/*.cjs tests/**/*.cjs",
+    "check": "node scripts/check-syntax.cjs",
     "gate:m0": "node scripts/m0-gate.cjs"
+  },
+  "engines": {
+    "node": ">=22.12"
   },
   "dependencies": {
     "cors": "^2.8.6",

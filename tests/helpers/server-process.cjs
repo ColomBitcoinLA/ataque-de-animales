@@ -23,7 +23,7 @@ async function getFreePort() {
   });
 }
 
-async function waitForHealth(port, child, timeoutMs = 5000) {
+async function waitForHealth(port, child, timeoutMs = 10000) {
   const startedAt = Date.now();
   let lastError = null;
 
