@@ -26,6 +26,8 @@ import {
 import { LIFECYCLE_STATES } from "./constants.mjs";
 
 export class CreatureIndividual {
+  #lifecycle;
+
   /**
    * @param {Object} options
    * @param {string} options.entityId
@@ -63,9 +65,14 @@ export class CreatureIndividual {
     });
 
     // 3. ownerId
-    this.ownerId = typeof options.ownerId === "string" && options.ownerId.trim()
-      ? options.ownerId.trim()
-      : null;
+    if (
+      options.ownerId !== undefined &&
+      options.ownerId !== null &&
+      (typeof options.ownerId !== "string" || !options.ownerId.trim())
+    ) {
+      throw new TypeError("CreatureIndividual: ownerId debe ser una cadena no vacía cuando se especifica.");
+    }
+    this.ownerId = typeof options.ownerId === "string" ? options.ownerId.trim() : null;
 
     // 4. Identity (el constructor directo exige identidad explícita; NO infiere de speciesId)
     if (options.identity instanceof Identity) {
@@ -145,7 +152,32 @@ export class CreatureIndividual {
         throw new RangeError(`CreatureIndividual: lifecycle desconocido '${options.lifecycle}'.`);
       }
     }
-    this.lifecycle = this.stats.isFainted ? "FAINTED" : lifecycle;
+    this.#lifecycle = this.stats.isFainted ? "FAINTED" : lifecycle;
+
+    // Las referencias estructurales no pueden reemplazarse desde consumidores externos.
+    for (const field of ["identity", "stats", "traits", "temperament", "progression", "position"]) {
+      Object.defineProperty(this, field, { writable: false, configurable: false });
+    }
+  }
+
+  get lifecycle() {
+    return this.#lifecycle;
+  }
+
+  /**
+   * Transición explícita y validada de ciclo de vida.
+   * Las políticas que deciden CUÁNDO transicionar pertenecen a simulación/combate.
+   */
+  setLifecycle(nextLifecycle) {
+    if (typeof nextLifecycle !== "string" || !nextLifecycle.trim()) {
+      throw new TypeError("CreatureIndividual: lifecycle debe ser una cadena no vacía.");
+    }
+    const normalized = nextLifecycle.toUpperCase().trim();
+    if (!LIFECYCLE_STATES.includes(normalized)) {
+      throw new RangeError(`CreatureIndividual: lifecycle desconocido '${nextLifecycle}'.`);
+    }
+    this.#lifecycle = normalized;
+    return this.#lifecycle;
   }
 
   /**
@@ -164,7 +196,7 @@ export class CreatureIndividual {
   takeDamage(amount) {
     const remaining = this.stats.takeDamage(amount);
     if (remaining <= 0) {
-      this.lifecycle = "FAINTED";
+      this.#lifecycle = "FAINTED";
     }
     return remaining;
   }
@@ -181,7 +213,7 @@ export class CreatureIndividual {
   }
 
   get isFainted() {
-    return this.lifecycle === "FAINTED";
+    return this.#lifecycle === "FAINTED";
   }
 
   get hasZeroHealth() {

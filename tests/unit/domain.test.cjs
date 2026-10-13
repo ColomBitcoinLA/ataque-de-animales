@@ -413,6 +413,13 @@ test("Progression: tracks level and XP with validation", () => {
   assert.throws(() => new Progression({ xp: 1.5 }), TypeError);
   assert.throws(() => p.addXp(1.5), TypeError);
 
+  assert.throws(() => {
+    p.xp = -999;
+  }, TypeError);
+  assert.throws(() => {
+    p.level = 0;
+  }, TypeError);
+
   const pClone = p.clone();
   pClone.addXp(50);
   assert.equal(pClone.xp, 170);
@@ -430,6 +437,14 @@ test("Position: tracks 2D coordinates safely with clone", () => {
 
   assert.throws(() => pos.set(NaN, 10), TypeError);
   assert.throws(() => new Position("10", 20), TypeError);
+  assert.throws(() => {
+    pos.x = NaN;
+  }, TypeError);
+  assert.throws(() => {
+    pos.y = Infinity;
+  }, TypeError);
+  assert.equal(pos.x, 50);
+  assert.equal(pos.y, 75);
 
   const posClone = pos.clone();
   posClone.set(100, 200);
@@ -476,6 +491,16 @@ test("CreatureIndividual: creates an individual via direct constructor", () => {
   assert.equal(creature.position.x, 100);
   assert.equal(creature.position.y, 150);
   assert.equal(creature.lifecycle, "ACTIVE");
+
+  assert.throws(() => {
+    creature.stats = new Stats({ baseHealth: 99 });
+  }, TypeError);
+  assert.throws(() => {
+    creature.position = new Position(999, 999);
+  }, TypeError);
+  assert.throws(() => {
+    creature.lifecycle = "BROKEN";
+  }, TypeError);
 });
 
 test("CreatureIndividual (H-3 Regression): direct constructor does not infer identity from speciesId", () => {
@@ -560,6 +585,17 @@ test("CreatureIndividual: lifecycle transitions on damage and preserves lifecycl
   assert.equal(creature.lifecycle, "FAINTED", "heal() no revive automáticamente; preserva el ciclo de vida FAINTED");
 });
 
+test("CreatureIndividual: lifecycle transitions are explicit and validated", () => {
+  const creature = CreatureIndividual.fromSpecies(neptunoSpecies, {
+    entityId: "lifecycle-transition",
+  });
+
+  assert.equal(creature.setLifecycle("RESTING"), "RESTING");
+  assert.equal(creature.lifecycle, "RESTING");
+  assert.throws(() => creature.setLifecycle("UNKNOWN"), RangeError);
+  assert.throws(() => creature.setLifecycle(""), TypeError);
+});
+
 test("CreatureIndividual: initial current health 0 produces coherent FAINTED lifecycle", () => {
   const creature = CreatureIndividual.fromSpecies(neptunoSpecies, {
     entityId: "fainted-initial",
@@ -578,9 +614,17 @@ test("CreatureIndividual: rejects explicit invalid temperament", () => {
   }), RangeError);
 });
 
-test("CreatureIndividual: rejects invalid position and lifecycle instead of silently coercing them", () => {
+test("CreatureIndividual: rejects invalid owner, position and lifecycle instead of silently coercing them", () => {
   const identity = { speciesDisplayName: "Neptuno" };
   const stats = { health: 3 };
+
+  assert.throws(() => new CreatureIndividual({
+    entityId: "bad-owner",
+    speciesId: "neptuno",
+    identity,
+    stats,
+    ownerId: 123,
+  }), TypeError);
 
   assert.throws(() => new CreatureIndividual({
     entityId: "bad-position",

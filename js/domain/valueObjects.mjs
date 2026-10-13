@@ -246,6 +246,9 @@ export class Temperament {
  * Progression: estado mínimo de nivel y experiencia del individuo.
  */
 export class Progression {
+  #level;
+  #xp;
+
   /**
    * @param {Object} [params]
    * @param {number} [params.level=1]
@@ -258,20 +261,28 @@ export class Progression {
     if (typeof xp !== "number" || !Number.isInteger(xp) || xp < 0) {
       throw new TypeError("Progression: xp debe ser un número entero no negativo >= 0.");
     }
-    this.level = level;
-    this.xp = xp;
+    this.#level = level;
+    this.#xp = xp;
+  }
+
+  get level() {
+    return this.#level;
+  }
+
+  get xp() {
+    return this.#xp;
   }
 
   addXp(amount) {
     if (typeof amount !== "number" || !Number.isInteger(amount) || amount < 0) {
       throw new TypeError("addXp requiere un número entero no negativo.");
     }
-    this.xp += amount;
-    return this.xp;
+    this.#xp += amount;
+    return this.#xp;
   }
 
   clone() {
-    return new Progression({ level: this.level, xp: this.xp });
+    return new Progression({ level: this.#level, xp: this.#xp });
   }
 }
 
@@ -279,6 +290,9 @@ export class Progression {
  * Position: coordenadas espaciales 2D mínimas en el dominio de simulación.
  */
 export class Position {
+  #x;
+  #y;
+
   /**
    * @param {number} [x=0]
    * @param {number} [y=0]
@@ -287,20 +301,28 @@ export class Position {
     if (typeof x !== "number" || !Number.isFinite(x) || typeof y !== "number" || !Number.isFinite(y)) {
       throw new TypeError("Position: las coordenadas x e y deben ser números finitos.");
     }
-    this.x = x;
-    this.y = y;
+    this.#x = x;
+    this.#y = y;
+  }
+
+  get x() {
+    return this.#x;
+  }
+
+  get y() {
+    return this.#y;
   }
 
   set(x, y) {
     if (typeof x !== "number" || !Number.isFinite(x) || typeof y !== "number" || !Number.isFinite(y)) {
       throw new TypeError("Position: las coordenadas x e y deben ser números finitos.");
     }
-    this.x = x;
-    this.y = y;
+    this.#x = x;
+    this.#y = y;
     return this;
   }
 
   clone() {
-    return new Position(this.x, this.y);
+    return new Position(this.#x, this.#y);
   }
 }

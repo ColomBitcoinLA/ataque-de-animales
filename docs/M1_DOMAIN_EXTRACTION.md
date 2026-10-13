@@ -130,6 +130,7 @@ Un individuo responde a: **"¿Quién es esta criatura en particular?"**
 
 - **Compartido (Especie)**: `speciesId`, estadísticas base (`baseStats`), afinidad elemental (`affinity`), catálogo de habilidades base (`abilities`), perfil de movimiento (`movementProfile`).
 - **Aislado e Independiente (Individuo)**: `entityId`, identidad (`identity.name`), salud actual (`stats.current.health`), experiencia (`progression.xp`), nivel (`progression.level`), rasgos (`traits`), temperamento (`temperament`), posición (`position`), ciclo de vida (`lifecycle`).
+- `entityId` y `speciesId` son estructuralmente inmutables; las referencias principales (`stats`, `traits`, `progression`, `position`, etc.) no pueden ser reemplazadas desde consumidores. Los objetos mutables exponen operaciones validadas en vez de campos públicos reescribibles.
 
 ### 5.2 Aislamiento Defensivo contra Mutable Aliasing (H-1)
 Para garantizar que dos criaturas nunca compartan estado mutable por reutilización accidental de instancias por parte del llamador, `CreatureIndividual` clona defensivamente:
@@ -168,6 +169,7 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
 - `takeDamage(amount)` transiciona el ciclo de vida a `"FAINTED"` cuando la salud llega a 0.
 - `heal(amount)` incrementa la salud actual respetando el tope de `maxHealth`, pero **preserva** el ciclo de vida: curar a una criatura debilitada (`FAINTED`) **no la revive automáticamente**. Las reglas de reanimación corresponden a políticas de simulación/combate futuras.
 - `isFainted` representa el estado de ciclo de vida (`lifecycle === "FAINTED"`); `hasZeroHealth` representa exclusivamente `currentHealth === 0`. Esto evita que una curación no-revivificante deje dos APIs públicas contradiciéndose.
+- Las transiciones manuales pasan por `setLifecycle(...)`, que valida contra `LIFECYCLE_STATES`; la política que decide cuándo cambiar de estado queda diferida a simulación/combate.
 - Criaturas inicializadas con salud 0 adoptan coherentemente `lifecycle: "FAINTED"`.
 
 ### 5.7 Inmutabilidad Profunda (Deep Immutability)
