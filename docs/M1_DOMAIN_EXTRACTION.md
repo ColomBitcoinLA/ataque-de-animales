@@ -1,6 +1,6 @@
 # 🐾 M1 — Domain Extraction: Superblock M1-A Documentation
 
-> **Estado**: 🟢 M1-A FINAL REVIEW PATCH COMPLETADA  
+> **Estado**: 🟡 M1-A EN REVISIÓN INDEPENDIENTE / HARDENING  
 > **Fecha**: 2026-10-12  
 > **Rama**: `m1/domain-extraction`  
 > **Alcance de M1-A**: M1.1 (Inventario semántico), M1.2 (SpeciesDefinition), M1.3 (CreatureIndividual), M1.4 (Identity / Stats / Traits / Temperament / Progression / Position)  
@@ -167,6 +167,7 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
 ### 5.6 Ciclo de Vida y Curación (Lifecycle & Heal)
 - `takeDamage(amount)` transiciona el ciclo de vida a `"FAINTED"` cuando la salud llega a 0.
 - `heal(amount)` incrementa la salud actual respetando el tope de `maxHealth`, pero **preserva** el ciclo de vida: curar a una criatura debilitada (`FAINTED`) **no la revive automáticamente**. Las reglas de reanimación corresponden a políticas de simulación/combate futuras.
+- `isFainted` representa el estado de ciclo de vida (`lifecycle === "FAINTED"`); `hasZeroHealth` representa exclusivamente `currentHealth === 0`. Esto evita que una curación no-revivificante deje dos APIs públicas contradiciéndose.
 - Criaturas inicializadas con salud 0 adoptan coherentemente `lifecycle: "FAINTED"`.
 
 ### 5.7 Inmutabilidad Profunda (Deep Immutability)
@@ -177,7 +178,7 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
 ## 6. Guardias de Paridad y Reglas Arquitectónicas
 
 1. **Elemental Parity Guard (`tests/unit/domain.test.cjs`)**:
-   - Guardia de regresión temporal que verifica que las afinidades de las especies por defecto (`neptunoSpecies`, `tierrudoSpecies`, `salamanderSpecies`) y los elementos disponibles (`VALID_AFFINITIES`) se mantienen en paridad con las definiciones existentes en `Animal.js` (`AFINIDAD_ANIMAL`, `ELEMENTOS_DISPONIBLES`) y `mokepon.js` (`TIPOS_ATAQUE`).
+   - Guardia de regresión temporal que verifica por lectura estructurada de fuente que `VALID_AFFINITIES` se mantiene en paridad con `Animal.js:ELEMENTOS_DISPONIBLES`, `js/core/typeChart.js:TIPOS` e `index.js:TIPOS`; también compara las afinidades de las tres especies base entre dominio, cliente legacy y servidor.
    - La consolidación unificada definitiva de la matriz de tipos se realizará en M1.8.
 
 2. **Domain Isolation Source-Level Guard (`tests/unit/domain.test.cjs`)**:
@@ -185,12 +186,12 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
    - Garantiza de forma verificable la ausencia total de APIs o dependencias prohibidas: `window`, `document`, `navigator`, `localStorage`, `sessionStorage`, `WebSocket`, `HTMLImageElement`, `HTMLCanvasElement`, `CanvasRenderingContext2D`, `new Image`, `express`, `child_process`, `net`, `http`.
 
 3. **Verificación de Sintaxis Multi-archivo (`scripts/check-syntax.cjs`)**:
-   - Reemplaza el comando shell anterior por un verificador multiplataforma confiable que ejecuta `node --check` individualmente sobre cada uno de los 27 archivos del proyecto (incluyendo CommonJS, módulos ES `.mjs` del dominio y suites de prueba).
+   - Reemplaza el comando shell anterior por un verificador multiplataforma confiable que ejecuta `node --check` individualmente sobre el conjunto protegido de 27 archivos Node/CJS/MJS y suites de prueba. No afirma validar todos los módulos browser `.js`, porque el paquete raíz es CommonJS y esos módulos legacy se ejecutan como ESM en navegador.
 
 ---
 
 ## 7. Estrategia hacia Superbloques Posteriores (M1-B)
 
-- En M1-B se implementará el `LegacyAnimalAdapter`, permitiendo que el objeto `Animal.js` existente delegue su estado de especie e individuo en `SpeciesDefinition` y `CreatureIndividual` sin alterar la experiencia de juego en el navegador.
-- En M1-C se consolidarán los sistemas de movimiento y colisiones.
-- En M1.8 se consolidará el motor de reglas elementales eliminando toda duplicación.
+- **M1-B (M1.5–M1.7)**: `LegacyAnimalAdapter` + extracción de posición/movimiento + contrato de colisiones, preservando la API y experiencia legacy durante la transición.
+- **M1-C (M1.8–M1.10)**: consolidación de reglas elementales compartidas, consolidación de tests de dominio/integración y cierre mediante regression gate + PR.
+- M1.8 debe eliminar la duplicación que hoy protege temporalmente el parity guard.

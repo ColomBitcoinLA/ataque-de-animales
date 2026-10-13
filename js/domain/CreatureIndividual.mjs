@@ -48,13 +48,19 @@ export class CreatureIndividual {
     if (typeof options.entityId !== "string" || !options.entityId.trim()) {
       throw new TypeError("CreatureIndividual: entityId debe ser una cadena no vacía.");
     }
-    this.entityId = options.entityId.trim();
+    const entityId = options.entityId.trim();
 
     // 2. speciesId
     if (typeof options.speciesId !== "string" || !options.speciesId.trim()) {
       throw new TypeError("CreatureIndividual: speciesId debe ser una cadena no vacía.");
     }
-    this.speciesId = options.speciesId.trim().toLowerCase();
+    const speciesId = options.speciesId.trim().toLowerCase();
+
+    // La identidad estructural de la entidad no debe poder reescribirse después de construirla.
+    Object.defineProperties(this, {
+      entityId: { value: entityId, enumerable: true, writable: false, configurable: false },
+      speciesId: { value: speciesId, enumerable: true, writable: false, configurable: false },
+    });
 
     // 3. ownerId
     this.ownerId = typeof options.ownerId === "string" && options.ownerId.trim()
@@ -123,17 +129,23 @@ export class CreatureIndividual {
     if (options.position instanceof Position) {
       this.position = options.position.clone();
     } else if (options.position && typeof options.position === "object") {
-      this.position = new Position(options.position.x || 0, options.position.y || 0);
+      this.position = new Position(options.position.x ?? 0, options.position.y ?? 0);
     } else {
       this.position = new Position(0, 0);
     }
 
-    // 10. Lifecycle
-    const lc = typeof options.lifecycle === "string" ? options.lifecycle.toUpperCase().trim() : "ACTIVE";
-    this.lifecycle = LIFECYCLE_STATES.includes(lc) ? lc : "ACTIVE";
-    if (this.stats.isFainted) {
-      this.lifecycle = "FAINTED";
+    // 10. Lifecycle: los valores explícitos inválidos fallan; no se degradan silenciosamente.
+    let lifecycle = "ACTIVE";
+    if (options.lifecycle !== undefined && options.lifecycle !== null) {
+      if (typeof options.lifecycle !== "string" || !options.lifecycle.trim()) {
+        throw new TypeError("CreatureIndividual: lifecycle debe ser una cadena no vacía cuando se especifica.");
+      }
+      lifecycle = options.lifecycle.toUpperCase().trim();
+      if (!LIFECYCLE_STATES.includes(lifecycle)) {
+        throw new RangeError(`CreatureIndividual: lifecycle desconocido '${options.lifecycle}'.`);
+      }
     }
+    this.lifecycle = this.stats.isFainted ? "FAINTED" : lifecycle;
   }
 
   /**
@@ -169,6 +181,10 @@ export class CreatureIndividual {
   }
 
   get isFainted() {
+    return this.lifecycle === "FAINTED";
+  }
+
+  get hasZeroHealth() {
     return this.stats.isFainted;
   }
 
@@ -198,11 +214,26 @@ export class CreatureIndividual {
       throw new TypeError("fromSpecies requiere options.entityId como cadena no vacía.");
     }
 
+    if (
+      options.identity instanceof Identity &&
+      options.identity.speciesDisplayName !== speciesDef.displayName
+    ) {
+      throw new RangeError("fromSpecies: identity.speciesDisplayName debe coincidir con SpeciesDefinition.displayName.");
+    }
+    if (
+      options.identity &&
+      !(options.identity instanceof Identity) &&
+      options.identity.speciesDisplayName !== undefined &&
+      options.identity.speciesDisplayName !== speciesDef.displayName
+    ) {
+      throw new RangeError("fromSpecies: identity.speciesDisplayName debe coincidir con SpeciesDefinition.displayName.");
+    }
+
     const identity = options.identity instanceof Identity
       ? options.identity
       : new Identity({
           speciesDisplayName: speciesDef.displayName,
-          name: options.name || (options.identity && options.identity.name) || speciesDef.displayName,
+          name: options.name ?? (options.identity && options.identity.name) ?? speciesDef.displayName,
         });
 
     const stats = new Stats({
@@ -214,7 +245,7 @@ export class CreatureIndividual {
     return new CreatureIndividual({
       entityId: options.entityId,
       speciesId: speciesDef.speciesId,
-      ownerId: options.ownerId || null,
+      ownerId: options.ownerId ?? null,
       identity,
       stats,
       traits: options.traits,

@@ -1,7 +1,7 @@
 /**
  * CommonJS wrapper para el dominio puro (M1-A).
- * Permite que require('./js/domain') o require('./js/domain/index.cjs') funcione
- * de manera transparente en entornos CJS (Node.js backend y tests).
+ * Punto de entrada explícito para CommonJS: require('./js/domain/index.cjs').
+ * No se promete resolución implícita de require('./js/domain') porque no existe index.js/package.json local.
  */
 
 module.exports = require("./index.mjs");

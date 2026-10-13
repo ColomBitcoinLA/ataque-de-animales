@@ -71,9 +71,13 @@ export class SpeciesDefinition {
     const displayName = options.displayName.trim();
 
     // 3. category
-    const category = typeof options.category === "string" && options.category.trim()
-      ? options.category.trim().toUpperCase()
-      : "PET";
+    let category = "PET";
+    if (options.category !== undefined && options.category !== null) {
+      if (typeof options.category !== "string" || !options.category.trim()) {
+        throw new TypeError("SpeciesDefinition: category debe ser una cadena no vacía cuando se especifica.");
+      }
+      category = options.category.trim().toUpperCase();
+    }
 
     // 4. affinity
     if (typeof options.affinity !== "string" || !VALID_AFFINITIES.includes(options.affinity.trim().toUpperCase())) {
@@ -98,42 +102,69 @@ export class SpeciesDefinition {
 
     // 6. abilities (normalización y aislamiento defensivo)
     // Invariante: las habilidades NUNCA heredan por omisión la afinidad de la especie.
-    const rawAbilities = Array.isArray(options.abilities) ? options.abilities : [];
+    if (options.abilities !== undefined && options.abilities !== null && !Array.isArray(options.abilities)) {
+      throw new TypeError("SpeciesDefinition: abilities debe ser un array cuando se especifica.");
+    }
+    const rawAbilities = options.abilities ?? [];
     const normalizedAbilities = Object.freeze(
-      rawAbilities.map((ab, index) => {
-        let abId = "";
+      rawAbilities.map((ab) => {
+        let abId;
         let abName = null;
         let explicitElement = null;
-        let power = undefined;
-        let cost = undefined;
+        let power;
+        let cost;
 
         if (typeof ab === "string") {
           abId = ab.trim();
-          abName = abId;
-        } else if (ab && typeof ab === "object") {
-          abId = typeof ab.id === "string" && ab.id.trim() ? ab.id.trim() : `ability-${index}`;
-          abName = typeof ab.name === "string" && ab.name.trim() ? ab.name.trim() : abId;
-          if (typeof ab.element === "string" && ab.element.trim()) {
-            const cand = ab.element.trim().toUpperCase();
-            explicitElement = VALID_AFFINITIES.includes(cand) ? cand : null;
+          if (!abId) {
+            throw new TypeError("SpeciesDefinition: una habilidad string no puede estar vacía.");
           }
-          if (typeof ab.power === "number") power = ab.power;
-          if (typeof ab.cost === "number") cost = ab.cost;
+        } else if (ab && typeof ab === "object" && !Array.isArray(ab)) {
+          if (typeof ab.id !== "string" || !ab.id.trim()) {
+            throw new TypeError("SpeciesDefinition: cada habilidad objeto requiere id no vacío.");
+          }
+          abId = ab.id.trim();
+
+          if (ab.name !== undefined && ab.name !== null) {
+            if (typeof ab.name !== "string" || !ab.name.trim()) {
+              throw new TypeError("SpeciesDefinition: ability.name debe ser una cadena no vacía cuando se especifica.");
+            }
+            abName = ab.name.trim();
+          }
+
+          if (ab.element !== undefined && ab.element !== null) {
+            if (typeof ab.element !== "string" || !ab.element.trim()) {
+              throw new TypeError("SpeciesDefinition: ability.element debe ser una cadena no vacía cuando se especifica.");
+            }
+            const candidate = ab.element.trim().toUpperCase();
+            if (!VALID_AFFINITIES.includes(candidate)) {
+              throw new RangeError(`SpeciesDefinition: ability.element desconocido '${ab.element}'.`);
+            }
+            explicitElement = candidate;
+          }
+
+          if (ab.power !== undefined) {
+            if (typeof ab.power !== "number" || !Number.isFinite(ab.power) || ab.power < 0) {
+              throw new RangeError("SpeciesDefinition: ability.power debe ser un número finito no negativo.");
+            }
+            power = ab.power;
+          }
+
+          if (ab.cost !== undefined) {
+            if (typeof ab.cost !== "number" || !Number.isFinite(ab.cost) || ab.cost < 0) {
+              throw new RangeError("SpeciesDefinition: ability.cost debe ser un número finito no negativo.");
+            }
+            cost = ab.cost;
+          }
         } else {
           throw new TypeError("SpeciesDefinition: cada habilidad debe ser una cadena o un objeto descriptor.");
         }
 
-        // Resolución elemental: si no se especificó elemento, usar mapeo canónico legacy.
-        // Si no está mapeado, se asigna null. NUNCA se hereda de species.affinity.
-        let resolvedElement = explicitElement;
-        if (!resolvedElement && LEGACY_ABILITY_ELEMENTS[abId]) {
-          resolvedElement = LEGACY_ABILITY_ELEMENTS[abId];
-        }
-
+        const resolvedElement = explicitElement ?? LEGACY_ABILITY_ELEMENTS[abId] ?? null;
         const abilityDescriptor = {
           id: abId,
-          name: abName,
           element: resolvedElement,
+          ...(abName !== null ? { name: abName } : {}),
           ...(power !== undefined ? { power } : {}),
           ...(cost !== undefined ? { cost } : {}),
         };
@@ -143,27 +174,41 @@ export class SpeciesDefinition {
     );
 
     // 7. movementProfile (con soporte para anidación profunda inmutable)
-    const baseSpeed = options.movementProfile && typeof options.movementProfile.baseSpeed === "number" && Number.isFinite(options.movementProfile.baseSpeed) && options.movementProfile.baseSpeed > 0
-      ? options.movementProfile.baseSpeed
-      : 180;
+    let baseSpeed = 180;
+    let movementInput = {};
+    if (options.movementProfile !== undefined && options.movementProfile !== null) {
+      if (typeof options.movementProfile !== "object" || Array.isArray(options.movementProfile)) {
+        throw new TypeError("SpeciesDefinition: movementProfile debe ser un objeto cuando se especifica.");
+      }
+      movementInput = options.movementProfile;
+      if (options.movementProfile.baseSpeed !== undefined) {
+        if (
+          typeof options.movementProfile.baseSpeed !== "number" ||
+          !Number.isFinite(options.movementProfile.baseSpeed) ||
+          options.movementProfile.baseSpeed <= 0
+        ) {
+          throw new RangeError("SpeciesDefinition: movementProfile.baseSpeed debe ser finito y mayor a 0.");
+        }
+        baseSpeed = options.movementProfile.baseSpeed;
+      }
+    }
     const movementProfile = deepFreeze(deepClone({
+      ...movementInput,
       baseSpeed,
-      ...(options.movementProfile && typeof options.movementProfile === "object" ? options.movementProfile : {}),
-      baseSpeed, // garantiza baseSpeed válido
     }));
 
     // 8. Perfiles opcionales profundamente inmutables
-    const sensesProfile = options.sensesProfile && typeof options.sensesProfile === "object"
-      ? deepFreeze(deepClone(options.sensesProfile))
-      : null;
+    const normalizeOptionalProfile = (value, fieldName) => {
+      if (value === undefined || value === null) return null;
+      if (typeof value !== "object" || Array.isArray(value)) {
+        throw new TypeError(`SpeciesDefinition: ${fieldName} debe ser un objeto cuando se especifica.`);
+      }
+      return deepFreeze(deepClone(value));
+    };
 
-    const behaviorProfile = options.behaviorProfile && typeof options.behaviorProfile === "object"
-      ? deepFreeze(deepClone(options.behaviorProfile))
-      : null;
-
-    const habitatProfile = options.habitatProfile && typeof options.habitatProfile === "object"
-      ? deepFreeze(deepClone(options.habitatProfile))
-      : null;
+    const sensesProfile = normalizeOptionalProfile(options.sensesProfile, "sensesProfile");
+    const behaviorProfile = normalizeOptionalProfile(options.behaviorProfile, "behaviorProfile");
+    const habitatProfile = normalizeOptionalProfile(options.habitatProfile, "habitatProfile");
 
     // Asignación inmutable profunda
     this.speciesId = speciesId;

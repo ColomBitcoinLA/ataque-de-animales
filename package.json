@@ -2,13 +2,13 @@
   "name": "ataque-de-animales",
   "version": "2.0.0",
   "description": "Animal Combat - juego multijugador con WebSockets",
-  "homepage": "https://github.com/ColombiTcoinLA/ataque-de-animales#readme",
+  "homepage": "https://github.com/ColomBitcoinLA/ataque-de-animales#readme",
   "bugs": {
-    "url": "https://github.com/ColombiTcoinLA/ataque-de-animales/issues"
+    "url": "https://github.com/ColomBitcoinLA/ataque-de-animales/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ColombiTcoinLA/ataque-de-animales.git"
+    "url": "git+https://github.com/ColomBitcoinLA/ataque-de-animales.git"
   },
   "license": "ISC",
   "author": "",

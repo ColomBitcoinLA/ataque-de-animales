@@ -21,7 +21,10 @@ export class Identity {
     }
 
     const sName = speciesDisplayName.trim();
-    const indName = typeof name === "string" && name.trim() ? name.trim() : sName;
+    if (name !== undefined && name !== null && (typeof name !== "string" || !name.trim())) {
+      throw new TypeError("Identity: name debe ser una cadena no vacía cuando se especifica.");
+    }
+    const indName = typeof name === "string" ? name.trim() : sName;
 
     this.speciesDisplayName = sName;
     this.name = indName;
@@ -249,21 +252,21 @@ export class Progression {
    * @param {number} [params.xp=0]
    */
   constructor({ level = 1, xp = 0 } = {}) {
-    if (typeof level !== "number" || !Number.isFinite(level) || level < 1) {
+    if (typeof level !== "number" || !Number.isInteger(level) || level < 1) {
       throw new TypeError("Progression: level debe ser un número entero >= 1.");
     }
-    if (typeof xp !== "number" || !Number.isFinite(xp) || xp < 0) {
-      throw new TypeError("Progression: xp debe ser un número finito no negativo >= 0.");
+    if (typeof xp !== "number" || !Number.isInteger(xp) || xp < 0) {
+      throw new TypeError("Progression: xp debe ser un número entero no negativo >= 0.");
     }
-    this.level = Math.floor(level);
-    this.xp = Math.floor(xp);
+    this.level = level;
+    this.xp = xp;
   }
 
   addXp(amount) {
-    if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0) {
-      throw new TypeError("addXp requiere un número finito no negativo.");
+    if (typeof amount !== "number" || !Number.isInteger(amount) || amount < 0) {
+      throw new TypeError("addXp requiere un número entero no negativo.");
     }
-    this.xp += Math.floor(amount);
+    this.xp += amount;
     return this.xp;
   }
 

@@ -158,11 +158,11 @@ test("SpeciesDefinition: normalizes string abilities and object abilities correc
   });
 
   assert.equal(spec.abilities[0].id, "botonFuego");
-  assert.equal(spec.abilities[0].name, "botonFuego");
+  assert.equal("name" in spec.abilities[0], false, "No se debe fabricar un nombre de presentación");
   assert.equal(spec.abilities[0].element, "FUEGO");
 
   assert.equal(spec.abilities[1].id, "botonFuego");
-  assert.equal(spec.abilities[1].name, "botonFuego");
+  assert.equal("name" in spec.abilities[1], false, "No se debe fabricar un nombre de presentación");
   assert.equal(spec.abilities[1].power, 25);
   assert.equal(spec.abilities[1].element, "FUEGO");
 });
@@ -191,6 +191,33 @@ test("SpeciesDefinition (H-2 Regression): unknown ability ID does not inherit sp
 
   assert.equal(spec.abilities[0].element, null);
   assert.notEqual(spec.abilities[0].element, "AGUA");
+});
+
+test("SpeciesDefinition: rejects malformed ability descriptors and invalid explicit elements", () => {
+  const base = {
+    speciesId: "ability-validation",
+    displayName: "Ability Validation",
+    affinity: "AGUA",
+    baseStats: { health: 3 },
+  };
+
+  assert.throws(() => new SpeciesDefinition({ ...base, abilities: "botonAgua" }), TypeError);
+  assert.throws(() => new SpeciesDefinition({ ...base, abilities: ["   "] }), TypeError);
+  assert.throws(() => new SpeciesDefinition({ ...base, abilities: [{}] }), TypeError);
+  assert.throws(() => new SpeciesDefinition({ ...base, abilities: [{ id: "atk", element: "SOMBRA" }] }), RangeError);
+});
+
+test("SpeciesDefinition: rejects invalid explicit movement profiles instead of silently defaulting", () => {
+  const base = {
+    speciesId: "movement-validation",
+    displayName: "Movement Validation",
+    affinity: "TIERRA",
+    baseStats: { health: 3 },
+  };
+
+  assert.throws(() => new SpeciesDefinition({ ...base, movementProfile: "fast" }), TypeError);
+  assert.throws(() => new SpeciesDefinition({ ...base, movementProfile: { baseSpeed: 0 } }), RangeError);
+  assert.throws(() => new SpeciesDefinition({ ...base, movementProfile: { baseSpeed: NaN } }), RangeError);
 });
 
 test("SpeciesDefinition: canonical default species match legacy gameplay facts without invented names", () => {
@@ -262,6 +289,8 @@ test("Identity: rejects invalid inputs without speciesDisplayName", () => {
   assert.throws(() => new Identity({ speciesDisplayName: "", name: "" }), TypeError);
   assert.throws(() => new Identity({ name: "Tritón" }), TypeError);
   assert.throws(() => new Identity({}), TypeError);
+  assert.throws(() => new Identity({ speciesDisplayName: "Neptuno", name: "" }), TypeError);
+  assert.throws(() => new Identity({ speciesDisplayName: "Neptuno", name: 123 }), TypeError);
 });
 
 test("Stats: manages base, max and mutable current health with boundaries", () => {
@@ -380,6 +409,9 @@ test("Progression: tracks level and XP with validation", () => {
   assert.throws(() => p.addXp(-10), TypeError);
   assert.throws(() => new Progression({ level: 0 }), TypeError);
   assert.throws(() => new Progression({ xp: -5 }), TypeError);
+  assert.throws(() => new Progression({ level: 1.5 }), TypeError);
+  assert.throws(() => new Progression({ xp: 1.5 }), TypeError);
+  assert.throws(() => p.addXp(1.5), TypeError);
 
   const pClone = p.clone();
   pClone.addXp(50);
@@ -428,6 +460,12 @@ test("CreatureIndividual: creates an individual via direct constructor", () => {
 
   assert.equal(creature.entityId, "creature-001");
   assert.equal(creature.speciesId, "neptuno");
+  assert.throws(() => {
+    creature.entityId = "rewritten";
+  }, TypeError);
+  assert.throws(() => {
+    creature.speciesId = "salamander";
+  }, TypeError);
   assert.equal(creature.identity.speciesDisplayName, "Neptuno");
   assert.equal(creature.identity.name, "Neptuno Alfa");
   assert.equal(creature.currentHealth, 3);
@@ -517,7 +555,8 @@ test("CreatureIndividual: lifecycle transitions on damage and preserves lifecycl
   // Curar a una criatura debilitada restaura salud pero PRESERVA el ciclo de vida (no revive automáticamente)
   creature.heal(2);
   assert.equal(creature.currentHealth, 2);
-  assert.equal(creature.isFainted, false);
+  assert.equal(creature.hasZeroHealth, false);
+  assert.equal(creature.isFainted, true, "FAINTED es estado de ciclo de vida, no un alias de health === 0");
   assert.equal(creature.lifecycle, "FAINTED", "heal() no revive automáticamente; preserva el ciclo de vida FAINTED");
 });
 
@@ -536,6 +575,39 @@ test("CreatureIndividual: rejects explicit invalid temperament", () => {
   assert.throws(() => CreatureIndividual.fromSpecies(neptunoSpecies, {
     entityId: "temp-test",
     temperament: "AGRESIV",
+  }), RangeError);
+});
+
+test("CreatureIndividual: rejects invalid position and lifecycle instead of silently coercing them", () => {
+  const identity = { speciesDisplayName: "Neptuno" };
+  const stats = { health: 3 };
+
+  assert.throws(() => new CreatureIndividual({
+    entityId: "bad-position",
+    speciesId: "neptuno",
+    identity,
+    stats,
+    position: { x: NaN, y: 0 },
+  }), TypeError);
+
+  assert.throws(() => new CreatureIndividual({
+    entityId: "bad-lifecycle",
+    speciesId: "neptuno",
+    identity,
+    stats,
+    lifecycle: "UNKNOWN",
+  }), RangeError);
+});
+
+test("CreatureIndividual.fromSpecies: rejects identity metadata that contradicts the authoritative species", () => {
+  assert.throws(() => CreatureIndividual.fromSpecies(neptunoSpecies, {
+    entityId: "identity-mismatch",
+    identity: new Identity({ speciesDisplayName: "Salamander" }),
+  }), RangeError);
+
+  assert.throws(() => CreatureIndividual.fromSpecies(neptunoSpecies, {
+    entityId: "identity-mismatch-object",
+    identity: { speciesDisplayName: "Salamander", name: "Alias" },
   }), RangeError);
 });
 
@@ -656,36 +728,47 @@ test("CreatureIndividual (H-1 Regression): same Position instance supplied to tw
 // 5. Parity Guard & Architectural Isolation Tests
 // ============================================================================
 
-test("Elemental parity guard: canonical affinity values match legacy definitions (temporary guard until M1.8)", () => {
-  // Verifica paridad entre las fuentes actuales sin crear dependencias circulares ni runtime acoplado
+test("Elemental parity guard: domain values match client, server and Animal legacy sources until M1.8", () => {
   const animalSource = fs.readFileSync(path.resolve(__dirname, "../../js/entities/Animal.js"), "utf8");
-  const mokeponSource = fs.readFileSync(path.resolve(__dirname, "../../js/mokepon.js"), "utf8");
+  const typeChartSource = fs.readFileSync(path.resolve(__dirname, "../../js/core/typeChart.js"), "utf8");
+  const serverSource = fs.readFileSync(path.resolve(__dirname, "../../index.js"), "utf8");
 
-  // 1. Paridad de afinidades de especies base
-  assert.ok(animalSource.includes('Neptuno: "AGUA"'), "Animal.js AFINIDAD_ANIMAL debe contener Neptuno: AGUA");
-  assert.ok(animalSource.includes('Salamander: "FUEGO"'), "Animal.js AFINIDAD_ANIMAL debe contener Salamander: FUEGO");
-  assert.ok(animalSource.includes('Tierrudo: "TIERRA"'), "Animal.js AFINIDAD_ANIMAL debe contener Tierrudo: TIERRA");
-
-  assert.equal(neptunoSpecies.affinity, "AGUA");
-  assert.equal(salamanderSpecies.affinity, "FUEGO");
-  assert.equal(tierrudoSpecies.affinity, "TIERRA");
-
-  // 2. Paridad del conjunto de elementos disponibles
-  for (const aff of VALID_AFFINITIES) {
-    assert.ok(animalSource.includes(`"${aff}"`), `Animal.js debe contemplar afinidad ${aff}`);
+  function extractStringArray(source, constName) {
+    const match = source.match(new RegExp(`(?:export\\s+)?const\\s+${constName}\\s*=\\s*\\[([\\s\\S]*?)\\]`));
+    assert.ok(match, `No se encontró array ${constName}`);
+    return [...match[1].matchAll(/["']([^"']+)["']/g)].map((item) => item[1]);
   }
 
-  // 3. Paridad de mapeo temporal de botones de habilidad
-  assert.equal(LEGACY_ABILITY_ELEMENTS.botonFuego, "FUEGO");
-  assert.equal(LEGACY_ABILITY_ELEMENTS.botonAgua, "AGUA");
-  assert.equal(LEGACY_ABILITY_ELEMENTS.botonTierra, "TIERRA");
-  assert.equal(LEGACY_ABILITY_ELEMENTS.botonElectrico, "ELECTRICO");
-  assert.equal(LEGACY_ABILITY_ELEMENTS.botonHielo, "HIELO");
-  assert.equal(LEGACY_ABILITY_ELEMENTS.botonDragon, "DRAGON");
+  function extractAffinity(source, displayName) {
+    const match = source.match(new RegExp(`${displayName}\\s*:\\s*["']([^"']+)["']`));
+    assert.ok(match, `No se encontró afinidad para ${displayName}`);
+    return match[1];
+  }
 
-  assert.ok(mokeponSource.includes('id: "botonFuego"'));
-  assert.ok(mokeponSource.includes('id: "botonAgua"'));
-  assert.ok(mokeponSource.includes('id: "botonTierra"'));
+  assert.deepEqual(extractStringArray(animalSource, "ELEMENTOS_DISPONIBLES"), [...VALID_AFFINITIES]);
+  assert.deepEqual(extractStringArray(typeChartSource, "TIPOS"), [...VALID_AFFINITIES]);
+  assert.deepEqual(extractStringArray(serverSource, "TIPOS"), [...VALID_AFFINITIES]);
+
+  for (const [displayName, species] of [
+    ["Neptuno", neptunoSpecies],
+    ["Salamander", salamanderSpecies],
+    ["Tierrudo", tierrudoSpecies],
+  ]) {
+    assert.equal(extractAffinity(animalSource, displayName), species.affinity);
+    assert.equal(extractAffinity(serverSource, displayName), species.affinity);
+  }
+
+  assert.deepEqual(
+    LEGACY_ABILITY_ELEMENTS,
+    {
+      botonFuego: "FUEGO",
+      botonAgua: "AGUA",
+      botonTierra: "TIERRA",
+      botonElectrico: "ELECTRICO",
+      botonHielo: "HIELO",
+      botonDragon: "DRAGON",
+    }
+  );
 });
 
 test("Domain isolation: source-level guard ensures pure domain modules contain zero forbidden APIs/imports", () => {
