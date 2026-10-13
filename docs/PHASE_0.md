@@ -51,4 +51,4 @@ Documento de cierre consolidado: [M0_SAFETY_NET_REPORT.md](./M0_SAFETY_NET_REPOR
 
 ### Próxima Fase
 
-**M1 — Domain Extraction**: Extracción de contratos de dominio puro, `SpeciesDefinition`, `CreatureIndividual` y desacoplamiento de la simulación.
+**M1 — Domain Extraction**: Extracción de contratos de dominio puro, `SpeciesDefinition`, `CreatureIndividual` y desacoplamiento de la simulación. Ver documentación en [M1_DOMAIN_EXTRACTION.md](./M1_DOMAIN_EXTRACTION.md).

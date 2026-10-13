@@ -73,26 +73,8 @@ async function runM0Gate() {
   );
 
   // 6. Syntax Checks (node --check)
-  const filesToCheck = [
-    "index.js",
-    "lib/security/passwords.js",
-    "lib/security/google-token.js",
-    "lib/security/rate-limiter.js",
-    "lib/security/cors-config.js",
-    "scripts/perf-baseline.cjs",
-    "scripts/rotate-sessions.cjs",
-    "scripts/m0-gate.cjs",
-    "tests/helpers/server-process.cjs",
-    "tests/helpers/websocket-client.cjs",
-    "tests/integration/server-health.test.cjs",
-    "tests/integration/websocket.test.cjs",
-    "tests/integration/multiplayer-contracts.test.cjs",
-    "tests/integration/security.test.cjs",
-    "tests/unit/passwords.test.cjs",
-    "tests/unit/google-token.test.cjs",
-    "tests/unit/rate-limiter.test.cjs",
-    "tests/unit/rotate-sessions.test.cjs",
-  ];
+  const { FILES_TO_CHECK } = require("./check-syntax.cjs");
+  const filesToCheck = FILES_TO_CHECK;
 
   let syntaxOk = true;
   for (const f of filesToCheck) {
