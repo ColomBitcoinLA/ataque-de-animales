@@ -6,12 +6,13 @@
  */
 
 import { SpeciesDefinition } from "./SpeciesDefinition.mjs";
+import { SPECIES_DEFAULT_AFFINITIES } from "../rules/index.mjs";
 
 export const neptunoSpecies = new SpeciesDefinition({
   speciesId: "neptuno",
   displayName: "Neptuno",
   category: "PET",
-  affinity: "AGUA",
+  affinity: SPECIES_DEFAULT_AFFINITIES.Neptuno,
   baseStats: {
     health: 3,
   },
@@ -31,7 +32,7 @@ export const tierrudoSpecies = new SpeciesDefinition({
   speciesId: "tierrudo",
   displayName: "Tierrudo",
   category: "PET",
-  affinity: "TIERRA",
+  affinity: SPECIES_DEFAULT_AFFINITIES.Tierrudo,
   baseStats: {
     health: 3,
   },
@@ -51,7 +52,7 @@ export const salamanderSpecies = new SpeciesDefinition({
   speciesId: "salamander",
   displayName: "Salamander",
   category: "PET",
-  affinity: "FUEGO",
+  affinity: SPECIES_DEFAULT_AFFINITIES.Salamander,
   baseStats: {
     health: 3,
   },
