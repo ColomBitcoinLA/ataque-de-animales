@@ -21,6 +21,7 @@ export class CollisionSystem {
   /**
    * Calcula la caja delimitadora AABB a partir de una posición y un descriptor colisionador.
    * Soporta tanto nombres canónicos (width/height) como legacy (ancho/alto, anchoColision/altoColision).
+   * Si se omite collider se usa DEFAULT_COLLIDER; no se infiere geometría custom desde position/entityLike.
    * @param {{ x: number, y: number }} position
    * @param {{ width?: number, height?: number, ancho?: number, alto?: number, anchoColision?: number, altoColision?: number, offsetX?: number, offsetY?: number }} [collider]
    * @returns {{ x: number, y: number, width: number, height: number, ancho: number, alto: number }}
