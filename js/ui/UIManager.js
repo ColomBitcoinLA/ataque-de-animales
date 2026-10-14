@@ -1,6 +1,7 @@
 /** @typedef {'LOBBY' | 'SELECCION' | 'MAPA' | 'COMBATE' | 'FIN'} GamePhase */
 
 import { TIPOS_ELEMENTALES, getEffectForCharged } from "../core/typeChart.js";
+import { SPECIES_DEFAULT_AFFINITIES, ELEMENTAL_METADATA } from "../rules/index.mjs";
 
 const TIPOS_ATAQUE = TIPOS_ELEMENTALES.map((t) => ({
   nombre: t.nombre,
@@ -167,11 +168,16 @@ export class UIManager {
     if (!this.contenedorTarjetas) return;
     this.contenedorTarjetas.innerHTML = "";
 
-    const elementMap = {
-      Neptuno: { icon: "💧", tipo: "Agua", cssClass: "elem-agua" },
-      Tierrudo: { icon: "🌱", tipo: "Tierra", cssClass: "elem-tierra" },
-      Salamander: { icon: "🔥", tipo: "Fuego", cssClass: "elem-fuego" },
-    };
+    const elementMap = Object.fromEntries(
+      Object.entries(SPECIES_DEFAULT_AFFINITIES).map(([speciesName, affinity]) => {
+        const metadata = ELEMENTAL_METADATA.find((item) => item.nombre === affinity);
+        return [speciesName, {
+          icon: metadata?.emoji ?? "🐾",
+          tipo: affinity.charAt(0) + affinity.slice(1).toLowerCase(),
+          cssClass: `elem-${affinity.toLowerCase()}`,
+        }];
+      })
+    );
 
     for (const animal of animales) {
       const elemInfo = elementMap[animal.nombre] || { icon: "🐾", tipo: "Normal", cssClass: "" };

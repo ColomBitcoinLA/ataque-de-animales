@@ -339,7 +339,7 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
 
 > **Estado**: 🟢 M1-C IMPLEMENTADO (Listo para QA Manual y Cierre de M1)
 > **Alcance**: M1.8 (Consolidación de Reglas Elementales), M1.9 (Consolidación de Tests y Guardias Anti-duplicación), M1.10 (Gate de Integración y Preparación de Cierre)
-> **Garantía**: Cero duplicación de matrices de daño o afinidades; tanto el backend como el frontend, dominio, compatibilidad y tests consumen la misma fuente de verdad canónica.
+> **Garantía**: La matriz de daño, resistencias especiales, afinidades de mascotas y efectos cargados tienen una fuente canónica en `js/rules/`. Los detalles propios de presentación (por ejemplo, bordes de aros o CSS) siguen perteneciendo a la UI; no son reglas de combate.
 
 ### 8.1 Arquitectura de la Fuente Única Elemental (`js/rules/`)
 
@@ -387,7 +387,7 @@ Se eliminó la dispersión histórica de definiciones elementales (`typeChart.js
 ### 8.3 Invariantes Finales de Milestone 1 (M1)
 
 1. **Aislamiento de Dominio**: El dominio (`js/domain/`) permanece 100% puro y no conoce DOM, Canvas, Image, WebSocket ni Express.
-2. **Separación de Posición**: `CreatureIndividual.position` es el único dueño lógico de coordenadas en tiempo de ejecución. La posición de render/suavizado (`renderX, renderY, targetX, targetY`) es una preocupación explícita de presentación y red.
+2. **Separación de Posición**: `CreatureIndividual.position` es el único dueño lógico de coordenadas en tiempo de ejecución. El adaptador mantiene `#renderPosition` privada para suavizado visual; `targetX/targetY` son alias de `CreatureIndividual.position` (posición lógica), no campos de render. La autoridad espacial real del servidor se implementará en M2.
 3. **Simulación Pura**: `MovementSystem` y `CollisionSystem` son funciones puras matemáticas de Euler y AABB sin dependencias externas de motores de física.
 4. **Fuente Única Elemental**: No existen matrices de tipos elementales duplicadas en ningún módulo del cliente, servidor o dominio.
 5. **Inmutabilidad Profunda**: Todas las definiciones de especie y matrices elementales están congeladas defensivamente.

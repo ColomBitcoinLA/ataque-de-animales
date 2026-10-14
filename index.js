@@ -77,11 +77,9 @@ function dmgBonusForLevel(level) { return Math.max(0, level - 1) * DMG_PER_LEVEL
 // Reglas elementales consolidadas (M1.8) desde la fuente canónica única
 const {
   TIPOS,
-  TYPE_MATCHUP,
-  DRAGON_RESISTANCES,
-  DRAGON_RESIST_MULT,
   AFINIDAD_ANIMAL,
   typeMultiplier,
+  getEffectForCharged,
 } = require("./js/rules/index.cjs");
 
 // ============================================================
@@ -473,16 +471,6 @@ function generateRoomCode() {
   let code = "";
   for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
-}
-
-function getEffectForCharged(tipo) {
-  if (tipo === "FUEGO") return "QUEMADO";
-  if (tipo === "AGUA") return "CONGELADO";
-  if (tipo === "TIERRA") return "ENVENENADO";
-  if (tipo === "ELECTRICO") return "PARALIZADO";
-  if (tipo === "HIELO") return "CONGELADO";
-  if (tipo === "DRAGON") return "DRAGONICO";
-  return "NINGUNO";
 }
 
 function calcDamage(attackType, charged, animalName, defenderAttack, defenderStatus, attackerDmgBonus = 0, move = null) {

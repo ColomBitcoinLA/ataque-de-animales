@@ -270,3 +270,31 @@ test("Duplication guard: constants.mjs derives from canonical rules without lite
     "constants.mjs no debe redeclarar un array literal de VALID_AFFINITIES."
   );
 });
+
+test("Source derivation: server imports canonical charged effect resolver instead of defining another", () => {
+  const source = fs.readFileSync(path.resolve(__dirname, "../../index.js"), "utf8");
+  assert.match(source, /getEffectForCharged\s*,[\s\S]*?require\(["']\.\/js\/rules\/index\.cjs["']\)/);
+  assert.doesNotMatch(source, /function\s+getEffectForCharged\s*\(/);
+});
+
+test("Presentation consumers derive elemental species affinities and base visuals from canonical rules", () => {
+  const arena = fs.readFileSync(path.resolve(__dirname, "../../js/3d/Arena3D.js"), "utf8");
+  const ui = fs.readFileSync(path.resolve(__dirname, "../../js/ui/UIManager.js"), "utf8");
+  assert.match(arena, /SPECIES_DEFAULT_AFFINITIES/);
+  assert.match(arena, /ELEMENTAL_METADATA/);
+  assert.doesNotMatch(arena, /const\s+PET_ELEMENT\s*=\s*\{/);
+  assert.match(ui, /SPECIES_DEFAULT_AFFINITIES/);
+  assert.match(ui, /ELEMENTAL_METADATA/);
+  assert.doesNotMatch(ui, /const\s+elementMap\s*=\s*\{/);
+});
+
+test("Cross-runtime wrapper exposes same canonical module instance and legacy 6x6 regression anchors behavior", async () => {
+  const esm = await import("../../js/rules/index.mjs");
+  const cjs = require("../../js/rules/index.cjs");
+  assert.equal(cjs.TYPE_MATCHUP, esm.TYPE_MATCHUP);
+  assert.equal(cjs.getEffectForCharged, esm.getEffectForCharged);
+  assert.equal(cjs.SPECIES_DEFAULT_AFFINITIES, esm.SPECIES_DEFAULT_AFFINITIES);
+  assert.equal(cjs.typeMultiplier("FUEGO", "DRAGON"), 0.75);
+  assert.equal(cjs.typeMultiplier("TIERRA", "DRAGON"), 1);
+  assert.equal(cjs.typeMultiplier("HIELO", "DRAGON"), 1.5);
+});

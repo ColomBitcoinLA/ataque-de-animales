@@ -1,6 +1,6 @@
 /**
  * Fuente Canónica Única de Reglas Elementales (M1.8).
- * 
+ *
  * Centraliza para todo el proyecto (browser, server, dominio, compatibilidad, tests):
  * - Elementos válidos (6 tipos del árbol elemental).
  * - Mapeo de botones de ataque legacy a elementos canónicos.
@@ -9,7 +9,7 @@
  * - Resistencias especiales (Dragón) y multiplicadores de combate.
  * - Cálculo puro de multiplicador de tipo (typeMultiplier).
  * - Metadatos de presentación visual (emojis, colores, tooltips, efectos de carga).
- * 
+ *
  * Inmutable: todas las estructuras de datos están profundamente congeladas (Object.freeze).
  * Libre de dependencias de DOM, Canvas, Image, WebSocket, Express o red.
  */
@@ -88,7 +88,7 @@ export const NEUTRAL_MULTIPLIER = 1.0;
 /**
  * Calcula el multiplicador de daño según el tipo del atacante y defensor.
  * Función pura compartida por el frontend y el backend para garantizar 100% de paridad.
- * 
+ *
  * @param {string} attacker - Tipo elemental del ataque
  * @param {string} defender - Tipo elemental del defensor
  * @returns {number} Multiplicador de daño (1.5, 0.7, 0.75 o 1.0)

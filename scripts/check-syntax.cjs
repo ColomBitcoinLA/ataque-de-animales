@@ -53,6 +53,8 @@ const FILES_TO_CHECK = [
 const BROWSER_ESM_FILES = [
   "js/entities/Animal.js",
   "js/core/typeChart.js",
+  "js/3d/Arena3D.js",
+  "js/ui/UIManager.js",
   "js/main.js",
 ];
 
