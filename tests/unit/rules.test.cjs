@@ -298,3 +298,11 @@ test("Cross-runtime wrapper exposes same canonical module instance and legacy 6x
   assert.equal(cjs.typeMultiplier("TIERRA", "DRAGON"), 1);
   assert.equal(cjs.typeMultiplier("HIELO", "DRAGON"), 1.5);
 });
+
+test("Server damage classification retains canonical dragon resistance multiplier import", () => {
+  const source = fs.readFileSync(path.resolve(__dirname, "../../index.js"), "utf8");
+  const canonicalImport = source.match(/const\s*\{([^}]+)\}\s*=\s*require\(["']\.\/js\/rules\/index\.cjs["']\)/);
+  assert.ok(canonicalImport, "Server must import canonical rules via CJS bridge");
+  assert.match(canonicalImport[1], /\bDRAGON_RESIST_MULT\b/, "calcDamage must have the dragon-resistance constant in scope");
+  assert.match(source, /mult === DRAGON_RESIST_MULT/);
+});

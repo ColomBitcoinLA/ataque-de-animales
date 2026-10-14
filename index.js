@@ -79,6 +79,7 @@ const {
   TIPOS,
   AFINIDAD_ANIMAL,
   typeMultiplier,
+  DRAGON_RESIST_MULT,
   getEffectForCharged,
 } = require("./js/rules/index.cjs");
 
