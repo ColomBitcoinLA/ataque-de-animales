@@ -1,6 +1,12 @@
 /**
  * Entidad de mascota / enemigo con hitbox e interpolación.
+ * Refactorizado en M1-B: delega estado de dominio, movimiento y colisiones
+ * en el LegacyAnimalAdapter y los subsistemas puros de simulación,
+ * preservando intacta la API pública y el comportamiento de presentación/Canvas.
  */
+
+import { LegacyAnimalAdapter } from "../compat/LegacyAnimalAdapter.mjs";
+
 export class Animal {
   /**
    * @param {string} nombre
@@ -10,30 +16,30 @@ export class Animal {
    * @param {number} [x=0]
    * @param {number} [y=0]
    */
-  constructor(nombre, foto, vida, fotoMapa, x = 0, y = 0) {
-    this.nombre = nombre;
+  constructor(nombre, foto, vida, fotoMapa, x = 0, y = 0, adapter = null) {
+    this.adapter = adapter instanceof LegacyAnimalAdapter
+      ? adapter
+      : new LegacyAnimalAdapter({
+          nombre,
+          foto,
+          fotoMapa,
+          x,
+          y,
+          vida,
+        });
+    Object.defineProperty(this, "adapter", {
+      value: this.adapter,
+      enumerable: true,
+      writable: false,
+      configurable: false,
+    });
+
     this.foto = foto;
-    this.vida = vida;
     /** @type {{ id: string }[]} */
-    this.ataques = [];
+    this.ataques = [...this.adapter.ataques];
 
-    this.x = x;
-    this.y = y;
-    this.targetX = x;
-    this.targetY = y;
-
-    this.ancho = 80;
-    this.alto = 80;
-    this.velocidadX = 0;
-    this.velocidadY = 0;
-    this.speed = 180; // px/s (delta-time based)
-
-    this.anchoColision = 30;
-    this.altoColision = 30;
-    this.offsetX = (this.ancho - this.anchoColision) / 2;
-    this.offsetY = (this.alto - this.altoColision) / 2;
-
-    this.mapaFoto = new Image();
+    // Objeto de renderizado (exclusivo de navegador/presentación)
+    this.mapaFoto = typeof Image !== "undefined" ? new Image() : { src: fotoMapa, complete: false };
     this.mapaFoto.src = fotoMapa;
     this.ready = false;
     this.mapaFoto.onload = () => {
@@ -42,18 +48,146 @@ export class Animal {
     if (this.mapaFoto.complete) this.ready = true;
   }
 
+  // --- Referencias de dominio sin duplicar estado ---
+  get individual() {
+    return this.adapter.individual;
+  }
+
+  get species() {
+    return this.adapter.species;
+  }
+
+  // --- Superficie legacy de posición renderizada / objetivo lógico ---
+
+  get x() {
+    return this.adapter.x;
+  }
+
+  set x(val) {
+    this.adapter.x = val;
+  }
+
+  get y() {
+    return this.adapter.y;
+  }
+
+  set y(val) {
+    this.adapter.y = val;
+  }
+
+  get targetX() {
+    return this.adapter.targetX;
+  }
+
+  set targetX(val) {
+    this.adapter.targetX = val;
+  }
+
+  get targetY() {
+    return this.adapter.targetY;
+  }
+
+  set targetY(val) {
+    this.adapter.targetY = val;
+  }
+
+  get velocidadX() {
+    return this.adapter.velocidadX;
+  }
+
+  set velocidadX(val) {
+    this.adapter.velocidadX = val;
+  }
+
+  get velocidadY() {
+    return this.adapter.velocidadY;
+  }
+
+  set velocidadY(val) {
+    this.adapter.velocidadY = val;
+  }
+
+  get speed() {
+    return this.adapter.speed;
+  }
+
+  set speed(val) {
+    this.adapter.speed = val;
+  }
+
+  get nombre() {
+    return this.adapter.nombre;
+  }
+
+  set nombre(val) {
+    if (val !== this.adapter.nombre) {
+      throw new RangeError("Animal.nombre identifica la especie y no puede mutarse en M1.");
+    }
+  }
+
+  get vida() {
+    return this.adapter.vida;
+  }
+
+  set vida(val) {
+    this.adapter.vida = val;
+  }
+
+  get ancho() {
+    return this.adapter.ancho;
+  }
+
+  set ancho(val) {
+    this.adapter.ancho = val;
+  }
+
+  get alto() {
+    return this.adapter.alto;
+  }
+
+  set alto(val) {
+    this.adapter.alto = val;
+  }
+
+  get anchoColision() {
+    return this.adapter.anchoColision;
+  }
+
+  set anchoColision(val) {
+    this.adapter.anchoColision = val;
+  }
+
+  get altoColision() {
+    return this.adapter.altoColision;
+  }
+
+  set altoColision(val) {
+    this.adapter.altoColision = val;
+  }
+
+  get offsetX() {
+    return this.adapter.offsetX;
+  }
+
+  set offsetX(val) {
+    this.adapter.offsetX = val;
+  }
+
+  get offsetY() {
+    return this.adapter.offsetY;
+  }
+
+  set offsetY(val) {
+    this.adapter.offsetY = val;
+  }
+
   /**
    * @param {number} x
    * @param {number} y
    * @param {boolean} [immediate=false]
    */
   setPosition(x, y, immediate = false) {
-    this.targetX = x;
-    this.targetY = y;
-    if (immediate) {
-      this.x = x;
-      this.y = y;
-    }
+    this.adapter.setPosition(x, y, immediate);
   }
 
   /**
@@ -62,9 +196,7 @@ export class Animal {
    * @param {number} [lerpFactor=12]
    */
   interpolate(dt, lerpFactor = 12) {
-    const t = 1 - Math.exp(-lerpFactor * dt);
-    this.x += (this.targetX - this.x) * t;
-    this.y += (this.targetY - this.y) * t;
+    this.adapter.interpolate(dt, lerpFactor);
   }
 
   /**
@@ -74,35 +206,18 @@ export class Animal {
    * @param {number} mapH
    */
   updateLocal(dt, mapW, mapH) {
-    this.x += this.velocidadX * this.speed * dt;
-    this.y += this.velocidadY * this.speed * dt;
-    this.x = Math.max(0, Math.min(mapW - this.ancho, this.x));
-    this.y = Math.max(0, Math.min(mapH - this.alto, this.y));
-    this.targetX = this.x;
-    this.targetY = this.y;
+    this.adapter.updateLocal(dt, mapW, mapH);
   }
 
   getHitbox() {
-    return {
-      x: this.x + this.offsetX,
-      y: this.y + this.offsetY,
-      ancho: this.anchoColision,
-      alto: this.altoColision,
-    };
+    return this.adapter.getHitbox();
   }
 
   /**
    * @param {Animal} other
    */
   collidesWith(other) {
-    const a = this.getHitbox();
-    const b = other.getHitbox();
-    return !(
-      a.x + a.ancho < b.x ||
-      a.x > b.x + b.ancho ||
-      a.y + a.alto < b.y ||
-      a.y > b.y + b.alto
-    );
+    return this.adapter.collidesWith(other);
   }
 
   /**
@@ -114,7 +229,16 @@ export class Animal {
   }
 
   cloneAt(x, y) {
-    const copy = new Animal(this.nombre, this.foto, this.vida, this.mapaFoto.src, x, y);
+    const cloneAdapter = this.adapter.cloneAt(x, y);
+    const copy = new Animal(
+      this.nombre,
+      this.foto,
+      this.vida,
+      this.mapaFoto.src,
+      x,
+      y,
+      cloneAdapter
+    );
     copy.ataques = [...this.ataques];
     copy.ancho = this.ancho;
     copy.alto = this.alto;
@@ -127,33 +251,9 @@ export class Animal {
 }
 
 export function createDefaultAnimals() {
-  const neptunoAtaques = [
-    { id: "botonAgua" },
-    { id: "botonAgua" },
-    { id: "botonAgua" },
-    { id: "botonTierra" },
-    { id: "botonFuego" },
-  ];
-
   const neptuno = new Animal("Neptuno", "./assets/agua.webp", 3, "./assets/cabezaNeptuno.webp");
   const tierrudo = new Animal("Tierrudo", "./assets/tierra.webp", 3, "./assets/cabezaTierrudo.webp");
   const salamander = new Animal("Salamander", "./assets/fuego.webp", 3, "./assets/cabezaSalamander.webp");
-
-  neptuno.ataques = neptunoAtaques;
-  tierrudo.ataques = [
-    { id: "botonTierra" },
-    { id: "botonTierra" },
-    { id: "botonTierra" },
-    { id: "botonAgua" },
-    { id: "botonFuego" },
-  ];
-  salamander.ataques = [
-    { id: "botonFuego" },
-    { id: "botonFuego" },
-    { id: "botonFuego" },
-    { id: "botonTierra" },
-    { id: "botonAgua" },
-  ];
 
   return { neptuno, tierrudo, salamander, list: [neptuno, tierrudo, salamander] };
 }

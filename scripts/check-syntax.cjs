@@ -1,5 +1,6 @@
 const path = require("node:path");
 const fs = require("node:fs");
+const os = require("node:os");
 const { spawnSync } = require("node:child_process");
 
 const ROOT_DIR = path.resolve(__dirname, "..");
@@ -21,6 +22,15 @@ const FILES_TO_CHECK = [
   "js/domain/defaultSpecies.mjs",
   "js/domain/index.mjs",
   "js/domain/index.cjs",
+  "js/simulation/MovementSystem.mjs",
+  "js/simulation/interpolation.mjs",
+  "js/simulation/CollisionSystem.mjs",
+  "js/simulation/index.mjs",
+  "js/simulation/index.cjs",
+  "js/compat/speciesResolver.mjs",
+  "js/compat/LegacyAnimalAdapter.mjs",
+  "js/compat/index.mjs",
+  "js/compat/index.cjs",
   "tests/helpers/server-process.cjs",
   "tests/helpers/websocket-client.cjs",
   "tests/integration/server-health.test.cjs",
@@ -28,11 +38,47 @@ const FILES_TO_CHECK = [
   "tests/integration/multiplayer-contracts.test.cjs",
   "tests/integration/security.test.cjs",
   "tests/unit/domain.test.cjs",
+  "tests/unit/simulation.test.cjs",
+  "tests/unit/compat.test.cjs",
   "tests/unit/passwords.test.cjs",
   "tests/unit/google-token.test.cjs",
   "tests/unit/rate-limiter.test.cjs",
   "tests/unit/rotate-sessions.test.cjs",
 ];
+
+const BROWSER_ESM_FILES = [
+  "js/entities/Animal.js",
+  "js/main.js",
+];
+
+function checkBrowserEsmSyntax() {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "animal-combat-esm-check-"));
+  let hasError = false;
+  try {
+    for (const relativePath of BROWSER_ESM_FILES) {
+      const sourcePath = path.join(ROOT_DIR, relativePath);
+      if (!fs.existsSync(sourcePath)) {
+        console.error(`✖ Missing browser ESM file: ${relativePath}`);
+        hasError = true;
+        continue;
+      }
+      const tempPath = path.join(tempDir, `${path.basename(relativePath, ".js")}.mjs`);
+      fs.writeFileSync(tempPath, fs.readFileSync(sourcePath, "utf8"), "utf8");
+      const res = spawnSync(process.execPath, ["--check", tempPath], {
+        cwd: ROOT_DIR,
+        encoding: "utf8",
+      });
+      if (res.status !== 0) {
+        console.error(`✖ Browser ESM syntax error in ${relativePath}:`);
+        if (res.stderr) console.error(res.stderr);
+        hasError = true;
+      }
+    }
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+  return !hasError;
+}
 
 function checkAllSyntax() {
   console.log(`Checking syntax for ${FILES_TO_CHECK.length} files...`);
@@ -58,12 +104,15 @@ function checkAllSyntax() {
     }
   }
 
+  if (!checkBrowserEsmSyntax()) hasError = true;
+
   if (hasError) {
     console.error("Syntax check failed.");
     process.exit(1);
   }
 
-  console.log(`✔ All ${FILES_TO_CHECK.length} files passed syntax check.`);
+  console.log(`✔ All ${FILES_TO_CHECK.length} Node/CJS/MJS files passed syntax check.`);
+  console.log(`✔ All ${BROWSER_ESM_FILES.length} browser ESM files passed syntax check.`);
 }
 
 if (require.main === module) {
@@ -72,5 +121,7 @@ if (require.main === module) {
 
 module.exports = {
   FILES_TO_CHECK,
+  BROWSER_ESM_FILES,
+  checkBrowserEsmSyntax,
   checkAllSyntax,
 };

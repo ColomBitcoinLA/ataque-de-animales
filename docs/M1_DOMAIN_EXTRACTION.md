@@ -188,12 +188,158 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
    - Garantiza de forma verificable la ausencia total de APIs o dependencias prohibidas: `window`, `document`, `navigator`, `localStorage`, `sessionStorage`, `WebSocket`, `HTMLImageElement`, `HTMLCanvasElement`, `CanvasRenderingContext2D`, `new Image`, `express`, `child_process`, `net`, `http`.
 
 3. **Verificación de Sintaxis Multi-archivo (`scripts/check-syntax.cjs`)**:
-   - Reemplaza el comando shell anterior por un verificador multiplataforma confiable que ejecuta `node --check` individualmente sobre el conjunto protegido de 27 archivos Node/CJS/MJS y suites de prueba. No afirma validar todos los módulos browser `.js`, porque el paquete raíz es CommonJS y esos módulos legacy se ejecutan como ESM en navegador.
+   - Ejecuta `node --check` sobre los módulos Node/CJS/MJS protegidos.
+   - También valida la sintaxis de `js/entities/Animal.js` y `js/main.js` como ESM mediante copias temporales `.mjs`, sin ejecutar el código ni añadir bundler.
 
 ---
 
-## 7. Estrategia hacia Superbloques Posteriores (M1-B)
+## 7. Superblock M1-B — Simulación y Adaptador de Compatibilidad
 
-- **M1-B (M1.5–M1.7)**: `LegacyAnimalAdapter` + extracción de posición/movimiento + contrato de colisiones, preservando la API y experiencia legacy durante la transición.
-- **M1-C (M1.8–M1.10)**: consolidación de reglas elementales compartidas, consolidación de tests de dominio/integración y cierre mediante regression gate + PR.
-- M1.8 debe eliminar la duplicación que hoy protege temporalmente el parity guard.
+> **Estado**: 🟡 M1-B EN REVISIÓN INDEPENDIENTE / HARDENING
+> **Alcance**: M1.5 (Legacy Compatibility Adapter), M1.6 (Extracción de Posición / Movimiento), M1.7 (Contrato de Colisiones)
+> **Garantía**: `Animal.js` no fue reescrito de forma destructiva; su API pública, responsabilidades visuales (`draw`, `mapaFoto`, Canvas) y flujos existentes se preservan intactos mientras la verdad de dominio y cálculo físico se delegan a subsistemas puros.
+
+### 7.1 Arquitectura en Capas M1-B
+
+```text
+┌────────────────────────────────────────────────────────┐
+│ DOMINIO PURO (js/domain/)                              │
+│ - SpeciesDefinition (inmutable, arquetipo de especie)  │
+│ - CreatureIndividual (identidad única, stats, vida)    │
+│ - Position (Value Object mutable validado)             │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ SIMULACIÓN PURA (js/simulation/)                       │
+│ - MovementSystem.mjs (integración Euler dt, límites)   │
+│ - interpolation.mjs (suavizado visual / red)           │
+│ - CollisionSystem.mjs (geometría AABB pura, offsets)   │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ COMPATIBILIDAD (js/compat/)                            │
+│ - speciesResolver.mjs (resuelve 'Neptuno' a canonical) │
+│ - LegacyAnimalAdapter.mjs (dueño único de puente)      │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ PRESENTACIÓN / LEGACY RUNTIME (js/entities/)           │
+│ - Animal.js (delega x/y, speed, movimiento, colisión;  │
+│   retiene draw(ctx), HTMLImageElement, Canvas)         │
+└────────────────────────────────────────────────────────┘
+```
+
+### 7.2 M1.5 — Adaptador de Compatibilidad y Propiedad de Estado
+
+1. **Posición lógica vs posición de render**:
+   - `CreatureIndividual.position` es la **posición lógica/autoritativa conocida por el cliente**.
+   - El adaptador mantiene una posición de render privada exclusivamente para suavizado visual de entidades remotas.
+   - `Animal.x/y` preservan la semántica visual legacy y leen la posición de render.
+   - Escrituras locales legacy en `x/y` sincronizan posición lógica + render.
+   - `setPosition(x, y, false)` actualiza la posición lógica objetivo sin hacer snap visual; `interpolate()` mueve sólo render hacia esa verdad lógica.
+   - Esta separación evita que una operación de presentación reescriba estado lógico. La autoridad espacial real de servidor sigue diferida a M2.
+
+2. **Resolución Canónica de Especies (`speciesResolver.mjs`)**:
+   - Mapea de forma centralizada y sin strings duplicados:
+     - `"Neptuno"` / `"neptuno"` → `neptunoSpecies`
+     - `"Tierrudo"` / `"tierrudo"` → `tierrudoSpecies`
+     - `"Salamander"` / `"salamander"` → `salamanderSpecies`
+   - Nombres desconocidos o nulos lanzan `TypeError` / `Error` predecible y explicativo, previniendo fallas silenciosas.
+
+3. **Estrategia de ID de Compatibilidad**:
+   - Generación determinista `compat-<speciesId>-<counter>` (ej. `compat-neptuno-1`).
+   - Evita colisiones de identidad dentro del ámbito de ejecución sin requerir infraestructura externa de UUID ni dependencias pesadas.
+
+4. **Preservación de `cloneAt(x, y)`**:
+   - Crea un clon de `CreatureIndividual` vía `CreatureIndividual.fromSpecies(species, { ... })`.
+   - Garantiza que dos clones no compartan instancias mutables de `Position`, `Stats`, `Traits` o `Progression`.
+
+5. **Delegación de Salud (`vida`)**:
+   - `vida` delega en `CreatureIndividual.currentHealth`.
+   - Escribir un valor menor invoca `takeDamage`; un valor mayor invoca `heal`.
+   - Como regla explícita de compatibilidad legacy, asignar `vida > 0` a una criatura `FAINTED` ejecuta además `setLifecycle("ACTIVE")`. El dominio puro mantiene `heal()` sin reanimación automática.
+
+### 7.3 M1.6 — Extracción de Posición, Movimiento e Interpolación
+
+1. **Contrato de Movimiento (`MovementSystem.mjs`)**:
+   - Integración matemática de velocidad en el plano 2D:
+     $$\Delta x = \text{velocidadX} \cdot \text{speed} \cdot \Delta t$$
+     $$\Delta y = \text{velocidadY} \cdot \text{speed} \cdot \Delta t$$
+   - Clampeo estricto a los bordes del mapa:
+     $$x \in [0, \text{mapWidth} - \text{entityWidth}]$$
+     $$y \in [0, \text{mapHeight} - \text{entityHeight}]$$
+   - Manejo determinista e independiente de la tasa de cuadros (`dt`).
+   - Validación estricta: `dt`, `speed`, `velocity` y `bounds` deben ser números finitos válidos; valores negativos o inválidos disparan `RangeError` / `TypeError` sin coerción silenciosa de `NaN` o `Infinity`.
+
+2. **Clasificación y Propiedad de la Interpolación (`interpolation.mjs`)**:
+   - **Clasificación arquitectónica**: `PRESENTATION / NETWORK SMOOTHING`.
+   - La interpolación **no pertenece al dominio puro**. Existe exclusivamente para mitigar el lag visual y la tasa de refresco en entidades remotas recibidas por red WebSocket.
+   - Se extrajo como función realmente pura `interpolateScalar` / `interpolatePosition`: devuelve el punto suavizado sin mutar sus entradas.
+     $x_{\text{nuevo}} = x + (x_{\text{target}} - x) \cdot (1 - e^{-\text{lerpFactor} \cdot \Delta t})$
+   - El adaptador aplica el resultado sólo sobre su posición de render privada; `CreatureIndividual.position` permanece intacta durante el smoothing.
+   - Preserva con exactitud matemática la curva visual original de `Animal.interpolate(dt, lerpFactor)`.
+
+### 7.4 M1.7 — Extracción del Contrato de Colisiones
+
+1. **Geometría Pura vs Presentación Gráfica**:
+   - Se desacopla el tamaño gráfico visual (`ancho = 80, alto = 80`) del colisionador físico (`anchoColision = 30, altoColision = 30, offsetX = 25, offsetY = 25`).
+   - `CollisionSystem.getAabb(position, collider)` computa la caja de colisión AABB pura `(x, y, ancho, alto)` sin instanciar Canvas ni acceder al DOM.
+
+2. **Semántica de Colisión AABB (`CollisionSystem.intersectsAabb`)**:
+   - Preserva de forma exacta el comportamiento legacy original caracterizado:
+     - No colisionan si:
+       $$a.x + a.w < b.x \lor a.x > b.x + b.w \lor a.y + a.h < b.y \lor a.y > b.y + b.h$$
+     - Semántica de toque de borde: Cuando las coordenadas límite coinciden exactamente ($a.x + a.w == b.x$), el resultado es `true` (inclusive edge-touch), garantizando compatibilidad 100% con los niveles y obstáculos actuales.
+   - Cero dependencias de motores de física externos (no se añade Matter.js, Cannon, Rapier ni Box2D).
+
+### 7.5 API Pública de `Animal.js` Preservada
+
+| Propiedad / Método | Estado en M1-B | Implementación |
+|---|---|---|
+| `x`, `y` | Delegada | Posición de render legacy; setters locales sincronizan render + posición lógica |
+| `targetX`, `targetY` | Delegada | Alias de la posición lógica objetivo (`CreatureIndividual.position`) |
+| `velocidadX`, `velocidadY` | Delegada | Getters/setters hacia `this.adapter.velocidadX/Y` |
+| `speed` | Delegada | Getter/setter hacia `this.adapter.speed` |
+| `nombre` | Delegada | Getter canónico de especie; mutación a otra especie se rechaza en M1 |
+| `vida` | Delegada | Getter/setter hacia `this.adapter.vida` |
+| `ancho`, `alto` | Delegada | Getters/setters hacia `this.adapter.ancho/alto` |
+| `anchoColision`, `altoColision` | Delegada | Getters/setters hacia `this.adapter` |
+| `offsetX`, `offsetY` | Delegada | Getters/setters hacia `this.adapter` |
+| `setPosition(x, y, immediate)` | Delegada | `this.adapter.setPosition(...)` |
+| `updateLocal(dt, mapW, mapH)` | Delegada | `this.adapter.updateLocal(...)` |
+| `interpolate(dt, lerpFactor)` | Delegada | `this.adapter.interpolate(...)` |
+| `getHitbox()` | Delegada | `this.adapter.getHitbox()` |
+| `collidesWith(other)` | Delegada | `this.adapter.collidesWith(other)` |
+| `cloneAt(x, y)` | Delegada | `this.adapter.cloneAt(x, y)` |
+| `draw(ctx)` | Intacta | Renderizado Canvas legacy en cliente |
+| `mapaFoto`, `ready` | Intacta | Carga de `Image()` exclusiva de navegador |
+| `createDefaultAnimals()` | Compatible | Retorna las mismas 3 mascotas; sus 5 ataques derivan de las definiciones canónicas de especie |
+
+---
+
+### 7.6 Hardening de revisión independiente
+
+- El loop real de exploración en `js/main.js` consume ahora `MovementSystem.calculateNextPosition`, `MovementSystem.clampToBounds` y `CollisionSystem.getAabb`, eliminando la duplicación de fórmulas que había quedado después de la primera extracción.
+- La restricción `mapWidth - ancho` / `mapHeight - alto` se conserva **como footprint de borde legacy** para no alterar la jugabilidad actual. No se considera geometría física canónica y deberá revisarse al introducir la simulación espacial autoritativa.
+- Los IDs `compat-<speciesId>-<counter>` son identificadores **locales de compatibilidad de runtime**. No son IDs de red, persistencia ni identidad global.
+- Entradas inválidas de posición, velocidad, tamaño, offsets, vida y especie fallan explícitamente; el adaptador ya no convierte silenciosamente valores corruptos a cero/defaults.
+- `cloneAt()` reutiliza un único adapter individual nuevo por clon y evita consumir IDs temporales adicionales durante la construcción de `Animal`.
+- `cloneAt()` resetea `speed` a la velocidad base de especie, preservando la semántica legacy original.
+- El borde de red ignora especies remotas desconocidas sin abortar `syncEnemies`.
+- `Animal.adapter` es estructuralmente no reemplazable; `nombre` no puede mutar a otra especie durante M1.
+- Las secuencias exactas de los 5 ataques legacy por especie están cubiertas por regresión.
+- `Animal.js` y `main.js` siguen requiriendo smoke QA para comportamiento de navegador; su sintaxis sí queda cubierta por `pnpm run check`.
+
+---
+
+## 8. Trabajo Diferido Formalmente a Superbloques Posteriores
+
+- **M1-C (M1.8)**: Consolidación de la matriz de tipos elementales (`TYPE_MATCHUP`, `TIPOS`, `AFINIDAD_ANIMAL`) en una única fuente de verdad compartida.
+- **M1-C (M1.9)**: Consolidación final de la suite de pruebas unitarias y de integración.
+- **M1-C (M1.10)**: Cierre de fase M1 y generación de Pull Request formal.
+- **M2 (World Simulation)**: Servidor autoritativo de movimiento espacial (coordenadas globales del mundo, zonas, shards). El cálculo de `MovementSystem` en el cliente actual se mantiene como predicción local y compatibilidad de renderizado.
+- **Fase Futura**: Migración 3D / Three.js y tipado TypeScript estricto.
+
