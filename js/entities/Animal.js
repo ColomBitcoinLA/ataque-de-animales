@@ -27,6 +27,12 @@ export class Animal {
           y,
           vida,
         });
+    Object.defineProperty(this, "adapter", {
+      value: this.adapter,
+      enumerable: true,
+      writable: false,
+      configurable: false,
+    });
 
     this.foto = foto;
     /** @type {{ id: string }[]} */
@@ -240,7 +246,6 @@ export class Animal {
     copy.altoColision = this.altoColision;
     copy.offsetX = this.offsetX;
     copy.offsetY = this.offsetY;
-    copy.speed = this.speed;
     return copy;
   }
 }

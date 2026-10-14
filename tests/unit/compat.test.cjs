@@ -46,7 +46,7 @@ test("Characterization: deterministic compatibility ID generator is local-only a
   assert.throws(() => resetCompatIdCounter(1.5), RangeError);
 });
 
-test("Characterization: LegacyAnimalAdapter establishes single authoritative position owner", () => {
+test("Characterization: logical position owner is separated from render position", () => {
   const adapter = new LegacyAnimalAdapter({
     nombre: "Neptuno",
     x: 100,
@@ -69,10 +69,12 @@ test("Characterization: LegacyAnimalAdapter establishes single authoritative pos
   assert.equal(adapter.individual.position.x, 150, "Modificar adapter.x debe mutar individual.position.x");
   assert.equal(adapter.individual.position.y, 250, "Modificar adapter.y debe mutar individual.position.y");
 
-  // 4. Modificar directamente individual.position se refleja inmediatamente en adapter.x/y
+  // 4. Cambiar la posición lógica no hace snap visual hasta interpolate()
   adapter.individual.position.set(300, 400);
-  assert.equal(adapter.x, 300);
-  assert.equal(adapter.y, 400);
+  assert.equal(adapter.targetX, 300);
+  assert.equal(adapter.targetY, 400);
+  assert.equal(adapter.x, 150, "la posición de render no salta hasta interpolate()");
+  assert.equal(adapter.y, 250);
 });
 
 test("Characterization: updateLocal updates authoritative position once and sets targetX/targetY", () => {
@@ -288,4 +290,44 @@ test("Compatibility: local writes synchronize logical and render positions while
   assert.equal(adapter.individual.position.y, 300);
   assert.equal(adapter.x, 30, "render position debe conservarse hasta interpolate()");
   assert.equal(adapter.y, 40, "render position debe conservarse hasta interpolate()");
+});
+
+
+test("Compatibility: legacy vida assignment revives lifecycle explicitly when health becomes positive", () => {
+  const adapter = new LegacyAnimalAdapter({ nombre: "Neptuno" });
+  adapter.vida = 0;
+  assert.equal(adapter.individual.lifecycle, "FAINTED");
+  assert.equal(adapter.individual.isFainted, true);
+
+  adapter.vida = 3;
+  assert.equal(adapter.vida, 3);
+  assert.equal(adapter.individual.lifecycle, "ACTIVE");
+  assert.equal(adapter.individual.isFainted, false);
+});
+
+test("Compatibility: cloneAt preserves legacy speed reset semantics", () => {
+  const original = new LegacyAnimalAdapter({ nombre: "Neptuno" });
+  original.speed = 250;
+  const clone = original.cloneAt(10, 20);
+  assert.equal(original.speed, 250);
+  assert.equal(clone.speed, neptunoSpecies.movementProfile.baseSpeed);
+});
+
+test("Compatibility: explicit nombre cannot contradict supplied species", () => {
+  assert.throws(
+    () => new LegacyAnimalAdapter({ species: neptunoSpecies, nombre: "Tierrudo" }),
+    RangeError
+  );
+});
+
+test("Compatibility: canonical attack ID sequences remain identical to legacy defaults", () => {
+  const cases = [
+    ["Neptuno", ["botonAgua", "botonAgua", "botonAgua", "botonTierra", "botonFuego"]],
+    ["Tierrudo", ["botonTierra", "botonTierra", "botonTierra", "botonAgua", "botonFuego"]],
+    ["Salamander", ["botonFuego", "botonFuego", "botonFuego", "botonTierra", "botonAgua"]],
+  ];
+  for (const [nombre, expected] of cases) {
+    const adapter = new LegacyAnimalAdapter({ nombre });
+    assert.deepEqual(adapter.ataques.map((attack) => attack.id), expected);
+  }
 });

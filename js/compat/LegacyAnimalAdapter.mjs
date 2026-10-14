@@ -71,6 +71,17 @@ function resolveAdapterSpecies({ species, individual, nombre }) {
     );
   }
 
+  if (nombre !== null && nombre !== undefined) {
+    if (typeof nombre !== "string" || !nombre.trim()) {
+      throw new TypeError("LegacyAnimalAdapter: nombre debe ser una cadena no vacía cuando se especifica.");
+    }
+    if (nombre.trim().toLowerCase() !== resolvedSpecies.displayName.toLowerCase()) {
+      throw new RangeError(
+        `LegacyAnimalAdapter: nombre '${nombre}' no coincide con species '${resolvedSpecies.displayName}'.`
+      );
+    }
+  }
+
   return resolvedSpecies;
 }
 
@@ -246,7 +257,7 @@ export class LegacyAnimalAdapter {
   }
 
   get vida() {
-    return this.individual.stats.current.health;
+    return this.individual.currentHealth;
   }
 
   set vida(value) {
@@ -263,6 +274,12 @@ export class LegacyAnimalAdapter {
       this.individual.takeDamage(current - value);
     } else if (value > current) {
       this.individual.heal(value - current);
+    }
+
+    // Compatibilidad legacy: asignar vida positiva representa una entidad viva.
+    // El dominio puro mantiene heal() sin reanimación automática.
+    if (value > 0 && this.individual.lifecycle === "FAINTED") {
+      this.individual.setLifecycle("ACTIVE");
     }
   }
 
@@ -347,7 +364,7 @@ export class LegacyAnimalAdapter {
     return new LegacyAnimalAdapter({
       species: this.species,
       individual: cloneIndividual,
-      speed: this.#speed,
+      // El cloneAt legacy creaba un Animal nuevo con velocidad base.
       ancho: this.ancho,
       alto: this.alto,
       anchoColision: this.anchoColision,

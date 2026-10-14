@@ -188,7 +188,8 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
    - Garantiza de forma verificable la ausencia total de APIs o dependencias prohibidas: `window`, `document`, `navigator`, `localStorage`, `sessionStorage`, `WebSocket`, `HTMLImageElement`, `HTMLCanvasElement`, `CanvasRenderingContext2D`, `new Image`, `express`, `child_process`, `net`, `http`.
 
 3. **Verificación de Sintaxis Multi-archivo (`scripts/check-syntax.cjs`)**:
-   - Reemplaza el comando shell anterior por un verificador multiplataforma confiable que ejecuta `node --check` individualmente sobre el conjunto protegido de 27 archivos Node/CJS/MJS y suites de prueba. No afirma validar todos los módulos browser `.js`, porque el paquete raíz es CommonJS y esos módulos legacy se ejecutan como ESM en navegador.
+   - Ejecuta `node --check` sobre los módulos Node/CJS/MJS protegidos.
+   - También valida la sintaxis de `js/entities/Animal.js` y `js/main.js` como ESM mediante copias temporales `.mjs`, sin ejecutar el código ni añadir bundler.
 
 ---
 
@@ -257,8 +258,9 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
    - Garantiza que dos clones no compartan instancias mutables de `Position`, `Stats`, `Traits` o `Progression`.
 
 5. **Delegación de Salud (`vida`)**:
-   - `vida` delega en `this.individual.stats.current.health`.
-   - Escribir `animal.vida = 2` invoca `takeDamage` o `heal` en el individuo según corresponda, manteniendo invariantes de encapsulación.
+   - `vida` delega en `CreatureIndividual.currentHealth`.
+   - Escribir un valor menor invoca `takeDamage`; un valor mayor invoca `heal`.
+   - Como regla explícita de compatibilidad legacy, asignar `vida > 0` a una criatura `FAINTED` ejecuta además `setLifecycle("ACTIVE")`. El dominio puro mantiene `heal()` sin reanimación automática.
 
 ### 7.3 M1.6 — Extracción de Posición, Movimiento e Interpolación
 
@@ -297,11 +299,11 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
 
 | Propiedad / Método | Estado en M1-B | Implementación |
 |---|---|---|
-| `x`, `y` | Delegada | Getters/setters hacia `this.adapter.individual.position` |
-| `targetX`, `targetY` | Delegada | Getters/setters hacia `this.adapter.targetX/Y` |
+| `x`, `y` | Delegada | Posición de render legacy; setters locales sincronizan render + posición lógica |
+| `targetX`, `targetY` | Delegada | Alias de la posición lógica objetivo (`CreatureIndividual.position`) |
 | `velocidadX`, `velocidadY` | Delegada | Getters/setters hacia `this.adapter.velocidadX/Y` |
 | `speed` | Delegada | Getter/setter hacia `this.adapter.speed` |
-| `nombre` | Delegada | Getter hacia `this.adapter.nombre` |
+| `nombre` | Delegada | Getter canónico de especie; mutación a otra especie se rechaza en M1 |
 | `vida` | Delegada | Getter/setter hacia `this.adapter.vida` |
 | `ancho`, `alto` | Delegada | Getters/setters hacia `this.adapter.ancho/alto` |
 | `anchoColision`, `altoColision` | Delegada | Getters/setters hacia `this.adapter` |
@@ -314,7 +316,22 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
 | `cloneAt(x, y)` | Delegada | `this.adapter.cloneAt(x, y)` |
 | `draw(ctx)` | Intacta | Renderizado Canvas legacy en cliente |
 | `mapaFoto`, `ready` | Intacta | Carga de `Image()` exclusiva de navegador |
-| `createDefaultAnimals()` | Intacta | Retorna lista de instancias compatibles para UI |
+| `createDefaultAnimals()` | Compatible | Retorna las mismas 3 mascotas; sus 5 ataques derivan de las definiciones canónicas de especie |
+
+---
+
+### 7.6 Hardening de revisión independiente
+
+- El loop real de exploración en `js/main.js` consume ahora `MovementSystem.calculateNextPosition`, `MovementSystem.clampToBounds` y `CollisionSystem.getAabb`, eliminando la duplicación de fórmulas que había quedado después de la primera extracción.
+- La restricción `mapWidth - ancho` / `mapHeight - alto` se conserva **como footprint de borde legacy** para no alterar la jugabilidad actual. No se considera geometría física canónica y deberá revisarse al introducir la simulación espacial autoritativa.
+- Los IDs `compat-<speciesId>-<counter>` son identificadores **locales de compatibilidad de runtime**. No son IDs de red, persistencia ni identidad global.
+- Entradas inválidas de posición, velocidad, tamaño, offsets, vida y especie fallan explícitamente; el adaptador ya no convierte silenciosamente valores corruptos a cero/defaults.
+- `cloneAt()` reutiliza un único adapter individual nuevo por clon y evita consumir IDs temporales adicionales durante la construcción de `Animal`.
+- `cloneAt()` resetea `speed` a la velocidad base de especie, preservando la semántica legacy original.
+- El borde de red ignora especies remotas desconocidas sin abortar `syncEnemies`.
+- `Animal.adapter` es estructuralmente no reemplazable; `nombre` no puede mutar a otra especie durante M1.
+- Las secuencias exactas de los 5 ataques legacy por especie están cubiertas por regresión.
+- `Animal.js` y `main.js` siguen requiriendo smoke QA para comportamiento de navegador; su sintaxis sí queda cubierta por `pnpm run check`.
 
 ---
 
@@ -326,11 +343,3 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
 - **M2 (World Simulation)**: Servidor autoritativo de movimiento espacial (coordenadas globales del mundo, zonas, shards). El cálculo de `MovementSystem` en el cliente actual se mantiene como predicción local y compatibilidad de renderizado.
 - **Fase Futura**: Migración 3D / Three.js y tipado TypeScript estricto.
 
-
-### 7.6 Hardening de revisión independiente
-
-- El loop real de exploración en `js/main.js` consume ahora `MovementSystem.calculateNextPosition`, `MovementSystem.clampToBounds` y `CollisionSystem.getAabb`, eliminando la duplicación de fórmulas que había quedado después de la primera extracción.
-- La restricción `mapWidth - ancho` / `mapHeight - alto` se conserva **como footprint de borde legacy** para no alterar la jugabilidad actual. No se considera geometría física canónica y deberá revisarse al introducir la simulación espacial autoritativa.
-- Los IDs `compat-<speciesId>-<counter>` son identificadores **locales de compatibilidad de runtime**. No son IDs de red, persistencia ni identidad global.
-- Entradas inválidas de posición, velocidad, tamaño, offsets, vida y especie fallan explícitamente; el adaptador ya no convierte silenciosamente valores corruptos a cero/defaults.
-- `cloneAt()` reutiliza un único adapter individual nuevo por clon y evita consumir IDs temporales adicionales durante la construcción de `Animal`.

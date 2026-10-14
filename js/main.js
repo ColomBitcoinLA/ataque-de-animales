@@ -454,12 +454,20 @@ function upsertRemote(data) {
   const nombre = data.mascota?.nombre; 
   if (!nombre) return;
   let a = remoteAnimals.get(data.id);
-  if (!a || a.nombre !== nombre) { 
-    const t = findAnimalTemplate(nombre); 
-    a = t ? t.cloneAt(data.x || 0, data.y || 0) : new Animal(nombre, "./assets/agua.webp", 3, "./assets/cabezaNeptuno.webp", data.x || 0, data.y || 0); 
-    remoteAnimals.set(data.id, a); 
+  if (!a || a.nombre !== nombre) {
+    const t = findAnimalTemplate(nombre);
+    if (!t) {
+      console.warn(`[net] especie remota desconocida '${nombre}' ignorada`);
+      return;
+    }
+    const initialX = Number.isFinite(data.x) ? data.x : 0;
+    const initialY = Number.isFinite(data.y) ? data.y : 0;
+    a = t.cloneAt(initialX, initialY);
+    remoteAnimals.set(data.id, a);
   }
-  if (typeof data.x === "number" && typeof data.y === "number") a.setPosition(data.x, data.y, !Number.isFinite(a.x));
+  if (Number.isFinite(data.x) && Number.isFinite(data.y)) {
+    a.setPosition(data.x, data.y, false);
+  }
 }
 
 // ——— Fase 4: UI de Perfil y Auth ———
