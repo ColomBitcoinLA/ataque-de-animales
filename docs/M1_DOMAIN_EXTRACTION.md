@@ -192,8 +192,133 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
 
 ---
 
-## 7. Estrategia hacia Superbloques Posteriores (M1-B)
+## 7. Superblock M1-B — Simulación y Adaptador de Compatibilidad
 
-- **M1-B (M1.5–M1.7)**: `LegacyAnimalAdapter` + extracción de posición/movimiento + contrato de colisiones, preservando la API y experiencia legacy durante la transición.
-- **M1-C (M1.8–M1.10)**: consolidación de reglas elementales compartidas, consolidación de tests de dominio/integración y cierre mediante regression gate + PR.
-- M1.8 debe eliminar la duplicación que hoy protege temporalmente el parity guard.
+> **Estado**: 🟢 M1-B IMPLEMENTADO
+> **Alcance**: M1.5 (Legacy Compatibility Adapter), M1.6 (Extracción de Posición / Movimiento), M1.7 (Contrato de Colisiones)
+> **Garantía**: `Animal.js` no fue reescrito de forma destructiva; su API pública, responsabilidades visuales (`draw`, `mapaFoto`, Canvas) y flujos existentes se preservan intactos mientras la verdad de dominio y cálculo físico se delegan a subsistemas puros.
+
+### 7.1 Arquitectura en Capas M1-B
+
+```text
+┌────────────────────────────────────────────────────────┐
+│ DOMINIO PURO (js/domain/)                              │
+│ - SpeciesDefinition (inmutable, arquetipo de especie)  │
+│ - CreatureIndividual (identidad única, stats, vida)    │
+│ - Position (Value Object mutable validado)             │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ SIMULACIÓN PURA (js/simulation/)                       │
+│ - MovementSystem.mjs (integración Euler dt, límites)   │
+│ - interpolation.mjs (suavizado visual / red)           │
+│ - CollisionSystem.mjs (geometría AABB pura, offsets)   │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ COMPATIBILIDAD (js/compat/)                            │
+│ - speciesResolver.mjs (resuelve 'Neptuno' a canonical) │
+│ - LegacyAnimalAdapter.mjs (dueño único de puente)      │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ PRESENTACIÓN / LEGACY RUNTIME (js/entities/)           │
+│ - Animal.js (delega x/y, speed, movimiento, colisión;  │
+│   retiene draw(ctx), HTMLImageElement, Canvas)         │
+└────────────────────────────────────────────────────────┘
+```
+
+### 7.2 M1.5 — Adaptador de Compatibilidad y Propiedad de Estado
+
+1. **Dueño Único de la Posición y Estado**:
+   - `CreatureIndividual.position` es la **única fuente de verdad autoritativa** de las coordenadas `(x, y)` en tiempo de ejecución.
+   - Ni `Animal` ni `LegacyAnimalAdapter` mantienen variables numéricas independientes `this.x` o `this.y`.
+   - `get x()`, `set x(val)`, `get y()`, `set y(val)` delegan directamente en `this.individual.position`.
+   - Modificar `adapter.x = 150` muta `individual.position.x`; mutar `individual.position.set(300, 400)` se refleja inmediatamente en `adapter.x` y `animal.x`.
+
+2. **Resolución Canónica de Especies (`speciesResolver.mjs`)**:
+   - Mapea de forma centralizada y sin strings duplicados:
+     - `"Neptuno"` / `"neptuno"` → `neptunoSpecies`
+     - `"Tierrudo"` / `"tierrudo"` → `tierrudoSpecies`
+     - `"Salamander"` / `"salamander"` → `salamanderSpecies`
+   - Nombres desconocidos o nulos lanzan `TypeError` / `Error` predecible y explicativo, previniendo fallas silenciosas.
+
+3. **Estrategia de ID de Compatibilidad**:
+   - Generación determinista `compat-<speciesId>-<counter>` (ej. `compat-neptuno-1`).
+   - Evita colisiones de identidad dentro del ámbito de ejecución sin requerir infraestructura externa de UUID ni dependencias pesadas.
+
+4. **Preservación de `cloneAt(x, y)`**:
+   - Crea un clon de `CreatureIndividual` vía `CreatureIndividual.fromSpecies(species, { ... })`.
+   - Garantiza que dos clones no compartan instancias mutables de `Position`, `Stats`, `Traits` o `Progression`.
+
+5. **Delegación de Salud (`vida`)**:
+   - `vida` delega en `this.individual.stats.current.health`.
+   - Escribir `animal.vida = 2` invoca `takeDamage` o `heal` en el individuo según corresponda, manteniendo invariantes de encapsulación.
+
+### 7.3 M1.6 — Extracción de Posición, Movimiento e Interpolación
+
+1. **Contrato de Movimiento (`MovementSystem.mjs`)**:
+   - Integración matemática de velocidad en el plano 2D:
+     $$\Delta x = \text{velocidadX} \cdot \text{speed} \cdot \Delta t$$
+     $$\Delta y = \text{velocidadY} \cdot \text{speed} \cdot \Delta t$$
+   - Clampeo estricto a los bordes del mapa:
+     $$x \in [0, \text{mapWidth} - \text{entityWidth}]$$
+     $$y \in [0, \text{mapHeight} - \text{entityHeight}]$$
+   - Manejo determinista e independiente de la tasa de cuadros (`dt`).
+   - Validación estricta: `dt`, `speed`, `velocity` y `bounds` deben ser números finitos válidos; valores negativos o inválidos disparan `RangeError` / `TypeError` sin coerción silenciosa de `NaN` o `Infinity`.
+
+2. **Clasificación y Propiedad de la Interpolación (`interpolation.mjs`)**:
+   - **Clasificación arquitectónica**: `PRESENTATION / NETWORK SMOOTHING`.
+   - La interpolación **no pertenece al dominio puro**. Existe exclusivamente para mitigar el lag visual y la tasa de refresco en entidades remotas recibidas por red WebSocket.
+   - Se extrajo como función pura `interpolateScalar` e `interpolatePosition`:
+     $$x_{\text{nuevo}} = x + (x_{\text{target}} - x) \cdot (1 - e^{-\text{lerpFactor} \cdot \Delta t})$$
+   - Preserva con exactitud matemática el comportamiento visual original de `Animal.interpolate(dt, lerpFactor)`.
+
+### 7.4 M1.7 — Extracción del Contrato de Colisiones
+
+1. **Geometría Pura vs Presentación Gráfica**:
+   - Se desacopla el tamaño gráfico visual (`ancho = 80, alto = 80`) del colisionador físico (`anchoColision = 30, altoColision = 30, offsetX = 25, offsetY = 25`).
+   - `CollisionSystem.getAabb(position, collider)` computa la caja de colisión AABB pura `(x, y, ancho, alto)` sin instanciar Canvas ni acceder al DOM.
+
+2. **Semántica de Colisión AABB (`CollisionSystem.intersectsAabb`)**:
+   - Preserva de forma exacta el comportamiento legacy original caracterizado:
+     - No colisionan si:
+       $$a.x + a.w < b.x \lor a.x > b.x + b.w \lor a.y + a.h < b.y \lor a.y > b.y + b.h$$
+     - Semántica de toque de borde: Cuando las coordenadas límite coinciden exactamente ($a.x + a.w == b.x$), el resultado es `true` (inclusive edge-touch), garantizando compatibilidad 100% con los niveles y obstáculos actuales.
+   - Cero dependencias de motores de física externos (no se añade Matter.js, Cannon, Rapier ni Box2D).
+
+### 7.5 API Pública de `Animal.js` Preservada
+
+| Propiedad / Método | Estado en M1-B | Implementación |
+|---|---|---|
+| `x`, `y` | Delegada | Getters/setters hacia `this.adapter.individual.position` |
+| `targetX`, `targetY` | Delegada | Getters/setters hacia `this.adapter.targetX/Y` |
+| `velocidadX`, `velocidadY` | Delegada | Getters/setters hacia `this.adapter.velocidadX/Y` |
+| `speed` | Delegada | Getter/setter hacia `this.adapter.speed` |
+| `nombre` | Delegada | Getter hacia `this.adapter.nombre` |
+| `vida` | Delegada | Getter/setter hacia `this.adapter.vida` |
+| `ancho`, `alto` | Delegada | Getters/setters hacia `this.adapter.ancho/alto` |
+| `anchoColision`, `altoColision` | Delegada | Getters/setters hacia `this.adapter` |
+| `offsetX`, `offsetY` | Delegada | Getters/setters hacia `this.adapter` |
+| `setPosition(x, y, immediate)` | Delegada | `this.adapter.setPosition(...)` |
+| `updateLocal(dt, mapW, mapH)` | Delegada | `this.adapter.updateLocal(...)` |
+| `interpolate(dt, lerpFactor)` | Delegada | `this.adapter.interpolate(...)` |
+| `getHitbox()` | Delegada | `this.adapter.getHitbox()` |
+| `collidesWith(other)` | Delegada | `this.adapter.collidesWith(other)` |
+| `cloneAt(x, y)` | Delegada | `this.adapter.cloneAt(x, y)` |
+| `draw(ctx)` | Intacta | Renderizado Canvas legacy en cliente |
+| `mapaFoto`, `ready` | Intacta | Carga de `Image()` exclusiva de navegador |
+| `createDefaultAnimals()` | Intacta | Retorna lista de instancias compatibles para UI |
+
+---
+
+## 8. Trabajo Diferido Formalmente a Superbloques Posteriores
+
+- **M1-C (M1.8)**: Consolidación de la matriz de tipos elementales (`TYPE_MATCHUP`, `TIPOS`, `AFINIDAD_ANIMAL`) en una única fuente de verdad compartida.
+- **M1-C (M1.9)**: Consolidación final de la suite de pruebas unitarias y de integración.
+- **M1-C (M1.10)**: Cierre de fase M1 y generación de Pull Request formal.
+- **M2 (World Simulation)**: Servidor autoritativo de movimiento espacial (coordenadas globales del mundo, zonas, shards). El cálculo de `MovementSystem` en el cliente actual se mantiene como predicción local y compatibilidad de renderizado.
+- **Fase Futura**: Migración 3D / Three.js y tipado TypeScript estricto.
