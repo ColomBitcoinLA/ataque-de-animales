@@ -1,17 +1,20 @@
 /**
- * LegacyAnimalAdapter: Adaptador de compatibilidad para Animal legacy (M1.5).
- * 
- * Responsabilidades:
- * - Conecta SpeciesDefinition y CreatureIndividual con la interfaz esperada por el código frontend.
- * - Dueño único de estado: CreatureIndividual.position es la verdad autoritativa para x e y.
- * - get x() y get y() delegan directamente en this.individual.position.
- * - Delega cálculo de movimiento en MovementSystem y colisiones en CollisionSystem.
- * - Delega suavizado de red en interpolatePosition.
- * - cloneAt() crea instancias aisladas de CreatureIndividual mediante fromSpecies.
- * - Libre de dependencias de DOM, Canvas, Image, WebSocket y Express.
+ * LegacyAnimalAdapter: puente de compatibilidad entre Animal legacy y el dominio/simulación M1.
+ *
+ * Reglas clave:
+ * - CreatureIndividual.position conserva la posición lógica/autoritativa conocida por el cliente.
+ * - La posición interpolada de render es separada y privada: el suavizado visual nunca reescribe
+ *   la posición lógica recibida por red.
+ * - Para el jugador local, escrituras legacy x/y y updateLocal sincronizan posición lógica + render.
+ * - Colisiones legacy y draw() observan la posición renderizada, preservando el comportamiento previo.
+ * - El adaptador no depende de DOM, Canvas, Image, WebSocket ni Express.
  */
 
-import { CreatureIndividual, SpeciesDefinition } from "../domain/index.mjs";
+import {
+  CreatureIndividual,
+  SpeciesDefinition,
+  Position,
+} from "../domain/index.mjs";
 import { MovementSystem } from "../simulation/MovementSystem.mjs";
 import { interpolatePosition } from "../simulation/interpolation.mjs";
 import { CollisionSystem } from "../simulation/CollisionSystem.mjs";
@@ -19,34 +22,79 @@ import { resolveLegacySpecies } from "./speciesResolver.mjs";
 
 let compatIdCounter = 0;
 
-export function resetCompatIdCounter(val = 0) {
-  compatIdCounter = val;
+function assertFiniteNumber(value, fieldName) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new TypeError(`LegacyAnimalAdapter: ${fieldName} debe ser un número finito.`);
+  }
+  return value;
+}
+
+function assertNonNegative(value, fieldName) {
+  assertFiniteNumber(value, fieldName);
+  if (value < 0) {
+    throw new RangeError(`LegacyAnimalAdapter: ${fieldName} no puede ser negativo.`);
+  }
+  return value;
+}
+
+function assertPositive(value, fieldName) {
+  assertFiniteNumber(value, fieldName);
+  if (value <= 0) {
+    throw new RangeError(`LegacyAnimalAdapter: ${fieldName} debe ser mayor a 0.`);
+  }
+  return value;
+}
+
+function resolveAdapterSpecies({ species, individual, nombre }) {
+  let resolvedSpecies;
+
+  if (species !== null && species !== undefined) {
+    if (!(species instanceof SpeciesDefinition)) {
+      throw new TypeError("LegacyAnimalAdapter: species debe ser una SpeciesDefinition.");
+    }
+    resolvedSpecies = species;
+  } else if (individual !== null && individual !== undefined) {
+    if (!(individual instanceof CreatureIndividual)) {
+      throw new TypeError("LegacyAnimalAdapter: individual debe ser un CreatureIndividual.");
+    }
+    resolvedSpecies = resolveLegacySpecies(individual.speciesId);
+  } else {
+    resolvedSpecies = resolveLegacySpecies(nombre);
+  }
+
+  if (
+    individual instanceof CreatureIndividual &&
+    individual.speciesId !== resolvedSpecies.speciesId
+  ) {
+    throw new RangeError(
+      `LegacyAnimalAdapter: individual.speciesId '${individual.speciesId}' no coincide con species '${resolvedSpecies.speciesId}'.`
+    );
+  }
+
+  return resolvedSpecies;
+}
+
+export function resetCompatIdCounter(value = 0) {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new RangeError("resetCompatIdCounter requiere un entero seguro no negativo.");
+  }
+  compatIdCounter = value;
 }
 
 export function generateCompatId(speciesId) {
+  if (typeof speciesId !== "string" || !speciesId.trim()) {
+    throw new TypeError("generateCompatId requiere speciesId como cadena no vacía.");
+  }
   compatIdCounter += 1;
-  return `compat-${speciesId}-${compatIdCounter}`;
+  return `compat-${speciesId.trim().toLowerCase()}-${compatIdCounter}`;
 }
 
 export class LegacyAnimalAdapter {
-  /**
-   * @param {Object} options
-   * @param {SpeciesDefinition} [options.species]
-   * @param {CreatureIndividual} [options.individual]
-   * @param {string} [options.nombre]
-   * @param {number} [options.x=0]
-   * @param {number} [options.y=0]
-   * @param {number} [options.speed]
-   * @param {number} [options.ancho=80]
-   * @param {number} [options.alto=80]
-   * @param {number} [options.anchoColision=30]
-   * @param {number} [options.altoColision=30]
-   * @param {number|null} [options.offsetX=null]
-   * @param {number|null} [options.offsetY=null]
-   * @param {Array<{ id: string }>} [options.ataques=null]
-   * @param {string} [options.foto=""]
-   * @param {string} [options.fotoMapa=""]
-   */
+  #renderPosition;
+  #velocidadX;
+  #velocidadY;
+  #speed;
+
   constructor({
     species = null,
     individual = null,
@@ -65,153 +113,215 @@ export class LegacyAnimalAdapter {
     foto = "",
     fotoMapa = "",
   } = {}) {
-    // 1. Especie canónica
-    const resolvedSpecies = species instanceof SpeciesDefinition
-      ? species
-      : resolveLegacySpecies(nombre || "neptuno");
+    const resolvedSpecies = resolveAdapterSpecies({ species, individual, nombre });
 
-    this.species = resolvedSpecies;
+    if (individual !== null && individual !== undefined && !(individual instanceof CreatureIndividual)) {
+      throw new TypeError("LegacyAnimalAdapter: individual debe ser un CreatureIndividual.");
+    }
 
-    // 2. CreatureIndividual: dueño autoritativo de posición y estado de individuo
     if (individual instanceof CreatureIndividual) {
       this.individual = individual;
     } else {
-      const entityId = generateCompatId(resolvedSpecies.speciesId);
-      const effectiveHealth = typeof vida === "number" && Number.isFinite(vida) && vida > 0
-        ? vida
-        : resolvedSpecies.baseStats.health;
+      assertFiniteNumber(x, "x");
+      assertFiniteNumber(y, "y");
+
+      const effectiveHealth = vida === null || vida === undefined
+        ? resolvedSpecies.baseStats.health
+        : assertNonNegative(vida, "vida");
+
       this.individual = CreatureIndividual.fromSpecies(resolvedSpecies, {
-        entityId,
-        position: { x: Number(x) || 0, y: Number(y) || 0 },
+        entityId: generateCompatId(resolvedSpecies.speciesId),
+        position: { x, y },
         currentHealth: effectiveHealth,
         maxHealth: Math.max(effectiveHealth, resolvedSpecies.baseStats.health),
       });
     }
 
-    // 3. Simulación de movimiento
-    this.velocidadX = 0;
-    this.velocidadY = 0;
-    this.speed = typeof speed === "number" && Number.isFinite(speed) && speed >= 0
-      ? speed
-      : resolvedSpecies.movementProfile.baseSpeed;
+    this.species = resolvedSpecies;
+    this.#renderPosition = new Position(
+      this.individual.position.x,
+      this.individual.position.y
+    );
 
-    // Posición destino para interpolación visual (targetX, targetY)
-    this.targetX = this.individual.position.x;
-    this.targetY = this.individual.position.y;
+    this.#velocidadX = 0;
+    this.#velocidadY = 0;
+    this.#speed = speed === null || speed === undefined
+      ? resolvedSpecies.movementProfile.baseSpeed
+      : assertNonNegative(speed, "speed");
 
-    // 4. Parámetros geométricos (visual vs colisionador)
-    this.ancho = ancho;
-    this.alto = alto;
-    this.anchoColision = anchoColision;
-    this.altoColision = altoColision;
-    this.offsetX = offsetX !== null && offsetX !== undefined ? offsetX : (this.ancho - this.anchoColision) / 2;
-    this.offsetY = offsetY !== null && offsetY !== undefined ? offsetY : (this.alto - this.altoColision) / 2;
+    this.ancho = assertPositive(ancho, "ancho");
+    this.alto = assertPositive(alto, "alto");
+    this.anchoColision = assertNonNegative(anchoColision, "anchoColision");
+    this.altoColision = assertNonNegative(altoColision, "altoColision");
+    this.offsetX = offsetX === null || offsetX === undefined
+      ? (this.ancho - this.anchoColision) / 2
+      : assertFiniteNumber(offsetX, "offsetX");
+    this.offsetY = offsetY === null || offsetY === undefined
+      ? (this.alto - this.altoColision) / 2
+      : assertFiniteNumber(offsetY, "offsetY");
 
-    // 5. Parámetros de presentación
-    this.foto = foto;
-    this.fotoMapa = fotoMapa;
+    this.foto = typeof foto === "string" ? foto : "";
+    this.fotoMapa = typeof fotoMapa === "string" ? fotoMapa : "";
 
-    // Ataques compatibles
-    this.ataques = Array.isArray(ataques)
-      ? [...ataques]
-      : resolvedSpecies.abilities.map((ab) => ({ id: ab.id }));
-  }
-
-  // --- Posición Autoritativa: delega en this.individual.position ---
-
-  get x() {
-    return this.individual.position.x;
-  }
-
-  set x(val) {
-    if (typeof val === "number" && Number.isFinite(val)) {
-      this.individual.position.set(val, this.individual.position.y);
+    if (ataques !== null && ataques !== undefined && !Array.isArray(ataques)) {
+      throw new TypeError("LegacyAnimalAdapter: ataques debe ser un array cuando se especifica.");
     }
+    this.ataques = Array.isArray(ataques)
+      ? ataques.map((attack) => ({ ...attack }))
+      : resolvedSpecies.abilities.map((ability) => ({ id: ability.id }));
+
+    Object.defineProperties(this, {
+      species: { writable: false, configurable: false },
+      individual: { writable: false, configurable: false },
+    });
+  }
+
+  // x/y son coordenadas renderizadas para mantener la superficie legacy.
+  // Las escrituras directas legacy representan movimiento local y sincronizan ambas posiciones.
+  get x() {
+    return this.#renderPosition.x;
+  }
+
+  set x(value) {
+    assertFiniteNumber(value, "x");
+    this.#renderPosition.set(value, this.#renderPosition.y);
+    this.individual.position.set(value, this.individual.position.y);
   }
 
   get y() {
+    return this.#renderPosition.y;
+  }
+
+  set y(value) {
+    assertFiniteNumber(value, "y");
+    this.#renderPosition.set(this.#renderPosition.x, value);
+    this.individual.position.set(this.individual.position.x, value);
+  }
+
+  // targetX/targetY son aliases de la última posición lógica conocida por el cliente.
+  get targetX() {
+    return this.individual.position.x;
+  }
+
+  set targetX(value) {
+    assertFiniteNumber(value, "targetX");
+    this.individual.position.set(value, this.individual.position.y);
+  }
+
+  get targetY() {
     return this.individual.position.y;
   }
 
-  set y(val) {
-    if (typeof val === "number" && Number.isFinite(val)) {
-      this.individual.position.set(this.individual.position.x, val);
-    }
+  set targetY(value) {
+    assertFiniteNumber(value, "targetY");
+    this.individual.position.set(this.individual.position.x, value);
+  }
+
+  get velocidadX() {
+    return this.#velocidadX;
+  }
+
+  set velocidadX(value) {
+    this.#velocidadX = assertFiniteNumber(value, "velocidadX");
+  }
+
+  get velocidadY() {
+    return this.#velocidadY;
+  }
+
+  set velocidadY(value) {
+    this.#velocidadY = assertFiniteNumber(value, "velocidadY");
+  }
+
+  get speed() {
+    return this.#speed;
+  }
+
+  set speed(value) {
+    this.#speed = assertNonNegative(value, "speed");
   }
 
   get nombre() {
-    return this.individual.identity.speciesDisplayName;
+    return this.species.displayName;
   }
 
   get vida() {
     return this.individual.stats.current.health;
   }
 
-  set vida(val) {
-    if (typeof val === "number" && Number.isFinite(val)) {
-      const current = this.individual.stats.current.health;
-      if (val < current) {
-        this.individual.takeDamage(current - val);
-      } else if (val > current) {
-        this.individual.heal(val - current);
-      }
+  set vida(value) {
+    assertNonNegative(value, "vida");
+    const maxHealth = this.individual.stats.max.health;
+    if (value > maxHealth) {
+      throw new RangeError(
+        `LegacyAnimalAdapter: vida (${value}) no puede exceder maxHealth (${maxHealth}).`
+      );
+    }
+
+    const current = this.individual.stats.current.health;
+    if (value < current) {
+      this.individual.takeDamage(current - value);
+    } else if (value > current) {
+      this.individual.heal(value - current);
     }
   }
 
   /**
-   * Ajuste de posición directa y target para interpolación.
-   * @param {number} x
-   * @param {number} y
-   * @param {boolean} [immediate=false]
+   * Actualiza la posición lógica objetivo recibida por red.
+   * Con immediate=true sincroniza también la posición de render.
    */
   setPosition(x, y, immediate = false) {
-    this.targetX = x;
-    this.targetY = y;
+    assertFiniteNumber(x, "x");
+    assertFiniteNumber(y, "y");
+    if (typeof immediate !== "boolean") {
+      throw new TypeError("LegacyAnimalAdapter: immediate debe ser boolean.");
+    }
+
+    this.individual.position.set(x, y);
     if (immediate) {
-      this.individual.position.set(x, y);
+      this.#renderPosition.set(x, y);
     }
   }
 
   /**
-   * Integra movimiento local usando MovementSystem puro y actualiza targetX/targetY.
-   * @param {number} dt
-   * @param {number} mapW
-   * @param {number} mapH
+   * Movimiento local: actualiza la posición lógica una vez y sincroniza render inmediatamente.
+   * El footprint usado para clamp (ancho/alto) es compatibilidad legacy, no geometría física canónica.
    */
   updateLocal(dt, mapW, mapH) {
     MovementSystem.updateLocal(
       this.individual.position,
-      { x: this.velocidadX, y: this.velocidadY },
-      this.speed,
+      { x: this.#velocidadX, y: this.#velocidadY },
+      this.#speed,
       dt,
       { width: mapW, height: mapH },
       { width: this.ancho, height: this.alto }
     );
-    this.targetX = this.individual.position.x;
-    this.targetY = this.individual.position.y;
-  }
-
-  /**
-   * Suaviza la posición hacia targetX/targetY para entidades remotas de red.
-   * Clasificación: PRESENTATION / NETWORK SMOOTHING.
-   * @param {number} dt
-   * @param {number} [lerpFactor=12]
-   */
-  interpolate(dt, lerpFactor = 12) {
-    interpolatePosition(
-      this.individual.position,
-      { x: this.targetX, y: this.targetY },
-      dt,
-      lerpFactor
+    this.#renderPosition.set(
+      this.individual.position.x,
+      this.individual.position.y
     );
   }
 
   /**
-   * Calcula la caja AABB usando CollisionSystem puro.
-   * @returns {{ x: number, y: number, width: number, height: number, ancho: number, alto: number }}
+   * Suavizado exclusivo de presentación: NO modifica CreatureIndividual.position.
+   */
+  interpolate(dt, lerpFactor = 12) {
+    const next = interpolatePosition(
+      this.#renderPosition,
+      this.individual.position,
+      dt,
+      lerpFactor
+    );
+    this.#renderPosition.set(next.x, next.y);
+    return next;
+  }
+
+  /**
+   * Preserva el contrato legacy: la colisión cliente sigue la posición renderizada.
+   * La colisión espacial autoritativa del mundo pertenece a M2.
    */
   getHitbox() {
-    return CollisionSystem.getAabb(this.individual.position, {
+    return CollisionSystem.getAabb(this.#renderPosition, {
       width: this.anchoColision,
       height: this.altoColision,
       offsetX: this.offsetX,
@@ -219,22 +329,14 @@ export class LegacyAnimalAdapter {
     });
   }
 
-  /**
-   * Determina si colisiona con otra entidad u obstáculo.
-   * @param {{ getHitbox?: Function, x: number, y: number }} other
-   * @returns {boolean}
-   */
   collidesWith(other) {
     return CollisionSystem.checkCollision(this, other);
   }
 
-  /**
-   * Factory de clonación: crea una nueva entidad independiente a partir de fromSpecies.
-   * @param {number} x
-   * @param {number} y
-   * @returns {LegacyAnimalAdapter}
-   */
   cloneAt(x, y) {
+    assertFiniteNumber(x, "cloneAt.x");
+    assertFiniteNumber(y, "cloneAt.y");
+
     const cloneIndividual = CreatureIndividual.fromSpecies(this.species, {
       entityId: generateCompatId(this.species.speciesId),
       position: { x, y },
@@ -245,11 +347,7 @@ export class LegacyAnimalAdapter {
     return new LegacyAnimalAdapter({
       species: this.species,
       individual: cloneIndividual,
-      nombre: this.nombre,
-      vida: this.vida,
-      x,
-      y,
-      speed: this.speed,
+      speed: this.#speed,
       ancho: this.ancho,
       alto: this.alto,
       anchoColision: this.anchoColision,

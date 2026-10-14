@@ -31,8 +31,18 @@ export class CollisionSystem {
     }
 
     const c = collider || DEFAULT_COLLIDER;
-    const offX = typeof c.offsetX === "number" && Number.isFinite(c.offsetX) ? c.offsetX : 0;
-    const offY = typeof c.offsetY === "number" && Number.isFinite(c.offsetY) ? c.offsetY : 0;
+    if (typeof c !== "object" || Array.isArray(c)) {
+      throw new TypeError("CollisionSystem: collider debe ser un objeto.");
+    }
+
+    const offX = c.offsetX ?? 0;
+    const offY = c.offsetY ?? 0;
+    if (
+      typeof offX !== "number" || !Number.isFinite(offX) ||
+      typeof offY !== "number" || !Number.isFinite(offY)
+    ) {
+      throw new TypeError("CollisionSystem: offsetX y offsetY deben ser números finitos.");
+    }
 
     const rawW = c.width ?? c.anchoColision ?? c.ancho ?? DEFAULT_COLLIDER.width;
     const rawH = c.height ?? c.altoColision ?? c.alto ?? DEFAULT_COLLIDER.height;

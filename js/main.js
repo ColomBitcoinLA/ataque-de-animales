@@ -15,6 +15,8 @@ import { SoundManager } from "./audio/SoundManager.js";
 import { BotAI } from "./entities/BotAI.js";
 import { Obstacle, generateObstacles } from "./entities/Obstacle.js";
 import { PowerUp, generatePowerUps } from "./entities/PowerUp.js";
+import { MovementSystem } from "./simulation/MovementSystem.mjs";
+import { CollisionSystem } from "./simulation/CollisionSystem.mjs";
 
 const ui = new UIManager();
 const lobby = new LobbyManager();
@@ -151,35 +153,41 @@ const engine = new GameEngine(
   (dt) => {
     if (gameState.phase !== "MAPA" || !mascotaJugador) return;
     
-    // Desplazamiento deseado
-    const nextX = mascotaJugador.x + mascotaJugador.velocidadX * mascotaJugador.speed * dt;
-    const nextY = mascotaJugador.y + mascotaJugador.velocidadY * mascotaJugador.speed * dt;
-    
-    // Comprobar colisiones con obstáculos sólidos
-    const futureHitbox = { 
-      x: nextX + mascotaJugador.offsetX, 
-      y: nextY + mascotaJugador.offsetY, 
-      ancho: mascotaJugador.anchoColision, 
-      alto: mascotaJugador.altoColision 
-    };
-    
+    // Desplazamiento deseado: la fórmula vive en MovementSystem, no se duplica en el loop.
+    const desiredPosition = MovementSystem.calculateNextPosition(
+      { x: mascotaJugador.x, y: mascotaJugador.y },
+      { x: mascotaJugador.velocidadX, y: mascotaJugador.velocidadY },
+      mascotaJugador.speed,
+      dt
+    );
+
+    // Compatibilidad legacy: el hitbox futuro sigue usando el colisionador centrado actual.
+    const futureHitbox = CollisionSystem.getAabb(desiredPosition, {
+      width: mascotaJugador.anchoColision,
+      height: mascotaJugador.altoColision,
+      offsetX: mascotaJugador.offsetX,
+      offsetY: mascotaJugador.offsetY,
+    });
+
     let blocked = false;
-    for (const obs of obstacles) { 
-      if (obs.collidesWith(futureHitbox)) { 
-        blocked = true; 
-        break; 
-      } 
+    for (const obs of obstacles) {
+      if (obs.collidesWith(futureHitbox)) {
+        blocked = true;
+        break;
+      }
     }
-    
-    if (!blocked) { 
-      mascotaJugador.x = nextX; 
-      mascotaJugador.y = nextY; 
+
+    if (!blocked) {
+      mascotaJugador.setPosition(desiredPosition.x, desiredPosition.y, true);
     }
-    
-    mascotaJugador.x = Math.max(0, Math.min(ui.mapa.width - mascotaJugador.ancho, mascotaJugador.x));
-    mascotaJugador.y = Math.max(0, Math.min(ui.mapa.height - mascotaJugador.alto, mascotaJugador.y));
-    mascotaJugador.targetX = mascotaJugador.x; 
-    mascotaJugador.targetY = mascotaJugador.y;
+
+    // El footprint visual 80x80 se conserva aquí sólo como regla de borde legacy.
+    const clampedPosition = MovementSystem.clampToBounds(
+      { x: mascotaJugador.x, y: mascotaJugador.y },
+      { width: ui.mapa.width, height: ui.mapa.height },
+      { width: mascotaJugador.ancho, height: mascotaJugador.alto }
+    );
+    mascotaJugador.setPosition(clampedPosition.x, clampedPosition.y, true);
 
     for (const r of remoteAnimals.values()) r.interpolate(dt);
 

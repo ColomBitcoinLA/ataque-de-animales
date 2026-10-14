@@ -36,11 +36,14 @@ test("Characterization: resolveLegacySpecies maps legacy names to canonical spec
   assert.throws(() => resolveLegacySpecies(null), TypeError);
 });
 
-test("Characterization: deterministic compatibility ID generator", () => {
+test("Characterization: deterministic compatibility ID generator is local-only and validated", () => {
   resetCompatIdCounter(0);
   assert.equal(generateCompatId("neptuno"), "compat-neptuno-1");
   assert.equal(generateCompatId("neptuno"), "compat-neptuno-2");
   assert.equal(generateCompatId("tierrudo"), "compat-tierrudo-3");
+  assert.throws(() => generateCompatId(""), TypeError);
+  assert.throws(() => resetCompatIdCounter(-1), RangeError);
+  assert.throws(() => resetCompatIdCounter(1.5), RangeError);
 });
 
 test("Characterization: LegacyAnimalAdapter establishes single authoritative position owner", () => {
@@ -117,7 +120,7 @@ test("Characterization: updateLocal respects boundary clamping [0, mapW - ancho]
   assert.equal(adapter.targetY, 520);
 });
 
-test("Characterization: interpolate smoothly updates authoritative position towards target", () => {
+test("Compatibility: interpolation smooths render position without rewriting authoritative logical position", () => {
   const adapter = new LegacyAnimalAdapter({
     nombre: "Salamander",
     x: 0,
@@ -129,11 +132,14 @@ test("Characterization: interpolate smoothly updates authoritative position towa
   assert.equal(adapter.y, 0);
   assert.equal(adapter.targetX, 100);
   assert.equal(adapter.targetY, 100);
+  assert.equal(adapter.individual.position.x, 100);
+  assert.equal(adapter.individual.position.y, 100);
 
   adapter.interpolate(0.1, 12);
-  assert.ok(adapter.x > 50 && adapter.x < 100, "x debe avanzar hacia targetX");
-  assert.ok(adapter.y > 50 && adapter.y < 100, "y debe avanzar hacia targetY");
-  assert.equal(adapter.individual.position.x, adapter.x, "individual.position debe sincronizarse");
+  assert.ok(adapter.x > 50 && adapter.x < 100, "render x debe avanzar hacia targetX");
+  assert.ok(adapter.y > 50 && adapter.y < 100, "render y debe avanzar hacia targetY");
+  assert.equal(adapter.individual.position.x, 100, "interpolation no debe alterar posición lógica x");
+  assert.equal(adapter.individual.position.y, 100, "interpolation no debe alterar posición lógica y");
 });
 
 test("Characterization: getHitbox and collidesWith match exact legacy AABB semantics", () => {
@@ -235,4 +241,51 @@ test("Compatibility: observable legacy properties (nombre, vida, ataques, speed)
   // Speed mutable por power-up (main.js: mascotaJugador.speed *= 1.3)
   adapter.speed *= 1.3;
   assert.equal(Math.round(adapter.speed), Math.round(180 * 1.3));
+});
+
+
+test("Compatibility: invalid constructor/setter input fails instead of silently coercing to defaults", () => {
+  assert.throws(() => new LegacyAnimalAdapter({}), TypeError);
+  assert.throws(() => new LegacyAnimalAdapter({ nombre: "Neptuno", x: NaN, y: 0 }), TypeError);
+  assert.throws(() => new LegacyAnimalAdapter({ nombre: "Neptuno", speed: -1 }), RangeError);
+  assert.throws(() => new LegacyAnimalAdapter({ nombre: "Neptuno", ancho: 0 }), RangeError);
+
+  const adapter = new LegacyAnimalAdapter({ nombre: "Neptuno" });
+  assert.throws(() => {
+    adapter.x = NaN;
+  }, TypeError);
+  assert.throws(() => {
+    adapter.targetY = Infinity;
+  }, TypeError);
+  assert.throws(() => {
+    adapter.velocidadX = "1";
+  }, TypeError);
+});
+
+test("Compatibility: supplied individual must match the canonical species", () => {
+  const individual = CreatureIndividual.fromSpecies(neptunoSpecies, {
+    entityId: "compat-mismatch",
+  });
+
+  assert.throws(
+    () => new LegacyAnimalAdapter({ species: salamanderSpecies, individual }),
+    RangeError
+  );
+});
+
+test("Compatibility: local writes synchronize logical and render positions while network targets do not snap render", () => {
+  const adapter = new LegacyAnimalAdapter({ nombre: "Neptuno", x: 10, y: 20 });
+
+  adapter.x = 30;
+  adapter.y = 40;
+  assert.equal(adapter.individual.position.x, 30);
+  assert.equal(adapter.individual.position.y, 40);
+  assert.equal(adapter.x, 30);
+  assert.equal(adapter.y, 40);
+
+  adapter.setPosition(200, 300, false);
+  assert.equal(adapter.individual.position.x, 200);
+  assert.equal(adapter.individual.position.y, 300);
+  assert.equal(adapter.x, 30, "render position debe conservarse hasta interpolate()");
+  assert.equal(adapter.y, 40, "render position debe conservarse hasta interpolate()");
 });

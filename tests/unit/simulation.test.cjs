@@ -112,6 +112,16 @@ test("MovementSystem: rejects invalid dt, speed, velocity, or bounds", () => {
   // bounds inválidos
   assert.throws(() => MovementSystem.clampToBounds(validPos, { width: 0, height: 600 }), RangeError);
   assert.throws(() => MovementSystem.clampToBounds(validPos, { width: -100, height: 600 }), RangeError);
+
+  // footprint inválido
+  assert.throws(
+    () => MovementSystem.clampToBounds(validPos, { width: 800, height: 600 }, { width: NaN, height: 80 }),
+    RangeError
+  );
+  assert.throws(
+    () => MovementSystem.clampToBounds(validPos, { width: 800, height: 600 }, { width: -1, height: 80 }),
+    RangeError
+  );
 });
 
 test("MovementSystem: deterministic computation across multiple steps", () => {
@@ -146,13 +156,15 @@ test("interpolateScalar: advancing dt exponentially approaches target", () => {
   assert.ok(Math.abs(large - 100) < 0.0001);
 });
 
-test("interpolatePosition: updates 2D coordinates in-place if set() available", () => {
-  const current = { x: 10, y: 20, set(x, y) { this.x = x; this.y = y; } };
+test("interpolatePosition: is pure and returns a smoothed point without mutating current state", () => {
+  const current = { x: 10, y: 20 };
   const target = { x: 110, y: 120 };
 
-  interpolatePosition(current, target, 0.05, 12);
-  assert.ok(current.x > 10 && current.x < 110);
-  assert.ok(current.y > 20 && current.y < 120);
+  const next = interpolatePosition(current, target, 0.05, 12);
+  assert.ok(next.x > 10 && next.x < 110);
+  assert.ok(next.y > 20 && next.y < 120);
+  assert.deepEqual(current, { x: 10, y: 20 });
+  assert.deepEqual(target, { x: 110, y: 120 });
 });
 
 test("interpolateScalar: rejects invalid inputs", () => {
@@ -235,6 +247,7 @@ test("CollisionSystem: handles offsets and movement-then-collision flow", () => 
 test("CollisionSystem: rejects invalid geometry explicitly", () => {
   assert.throws(() => CollisionSystem.getAabb({ x: NaN, y: 0 }), TypeError);
   assert.throws(() => CollisionSystem.getAabb({ x: 0, y: 0 }, { width: -10 }), RangeError);
+  assert.throws(() => CollisionSystem.getAabb({ x: 0, y: 0 }, { width: 10, height: 10, offsetX: NaN }), TypeError);
   assert.throws(() => CollisionSystem.intersectsAabb(null, { x: 0, y: 0, width: 10, height: 10 }), TypeError);
   assert.throws(() => CollisionSystem.intersectsAabb({ x: 0, y: 0, width: NaN, height: 10 }, { x: 0, y: 0, width: 10, height: 10 }), TypeError);
 });

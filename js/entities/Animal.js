@@ -16,19 +16,17 @@ export class Animal {
    * @param {number} [x=0]
    * @param {number} [y=0]
    */
-  constructor(nombre, foto, vida, fotoMapa, x = 0, y = 0) {
-    this.adapter = new LegacyAnimalAdapter({
-      nombre,
-      foto,
-      fotoMapa,
-      x,
-      y,
-      vida,
-    });
-
-    // Referencias a dominio puro
-    this.individual = this.adapter.individual;
-    this.species = this.adapter.species;
+  constructor(nombre, foto, vida, fotoMapa, x = 0, y = 0, adapter = null) {
+    this.adapter = adapter instanceof LegacyAnimalAdapter
+      ? adapter
+      : new LegacyAnimalAdapter({
+          nombre,
+          foto,
+          fotoMapa,
+          x,
+          y,
+          vida,
+        });
 
     this.foto = foto;
     /** @type {{ id: string }[]} */
@@ -44,7 +42,16 @@ export class Animal {
     if (this.mapaFoto.complete) this.ready = true;
   }
 
-  // --- Propiedades con Dueño Único: delegan en this.adapter.individual.position ---
+  // --- Referencias de dominio sin duplicar estado ---
+  get individual() {
+    return this.adapter.individual;
+  }
+
+  get species() {
+    return this.adapter.species;
+  }
+
+  // --- Superficie legacy de posición renderizada / objetivo lógico ---
 
   get x() {
     return this.adapter.x;
@@ -107,7 +114,9 @@ export class Animal {
   }
 
   set nombre(val) {
-    // Compatibilidad en caso de asignación
+    if (val !== this.adapter.nombre) {
+      throw new RangeError("Animal.nombre identifica la especie y no puede mutarse en M1.");
+    }
   }
 
   get vida() {
@@ -214,10 +223,16 @@ export class Animal {
   }
 
   cloneAt(x, y) {
-    const copy = new Animal(this.nombre, this.foto, this.vida, this.mapaFoto.src, x, y);
-    copy.adapter = this.adapter.cloneAt(x, y);
-    copy.individual = copy.adapter.individual;
-    copy.species = copy.adapter.species;
+    const cloneAdapter = this.adapter.cloneAt(x, y);
+    const copy = new Animal(
+      this.nombre,
+      this.foto,
+      this.vida,
+      this.mapaFoto.src,
+      x,
+      y,
+      cloneAdapter
+    );
     copy.ataques = [...this.ataques];
     copy.ancho = this.ancho;
     copy.alto = this.alto;

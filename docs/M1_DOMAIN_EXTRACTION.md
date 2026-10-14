@@ -194,7 +194,7 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
 
 ## 7. Superblock M1-B — Simulación y Adaptador de Compatibilidad
 
-> **Estado**: 🟢 M1-B IMPLEMENTADO
+> **Estado**: 🟡 M1-B EN REVISIÓN INDEPENDIENTE / HARDENING
 > **Alcance**: M1.5 (Legacy Compatibility Adapter), M1.6 (Extracción de Posición / Movimiento), M1.7 (Contrato de Colisiones)
 > **Garantía**: `Animal.js` no fue reescrito de forma destructiva; su API pública, responsabilidades visuales (`draw`, `mapaFoto`, Canvas) y flujos existentes se preservan intactos mientras la verdad de dominio y cálculo físico se delegan a subsistemas puros.
 
@@ -233,11 +233,13 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
 
 ### 7.2 M1.5 — Adaptador de Compatibilidad y Propiedad de Estado
 
-1. **Dueño Único de la Posición y Estado**:
-   - `CreatureIndividual.position` es la **única fuente de verdad autoritativa** de las coordenadas `(x, y)` en tiempo de ejecución.
-   - Ni `Animal` ni `LegacyAnimalAdapter` mantienen variables numéricas independientes `this.x` o `this.y`.
-   - `get x()`, `set x(val)`, `get y()`, `set y(val)` delegan directamente en `this.individual.position`.
-   - Modificar `adapter.x = 150` muta `individual.position.x`; mutar `individual.position.set(300, 400)` se refleja inmediatamente en `adapter.x` y `animal.x`.
+1. **Posición lógica vs posición de render**:
+   - `CreatureIndividual.position` es la **posición lógica/autoritativa conocida por el cliente**.
+   - El adaptador mantiene una posición de render privada exclusivamente para suavizado visual de entidades remotas.
+   - `Animal.x/y` preservan la semántica visual legacy y leen la posición de render.
+   - Escrituras locales legacy en `x/y` sincronizan posición lógica + render.
+   - `setPosition(x, y, false)` actualiza la posición lógica objetivo sin hacer snap visual; `interpolate()` mueve sólo render hacia esa verdad lógica.
+   - Esta separación evita que una operación de presentación reescriba estado lógico. La autoridad espacial real de servidor sigue diferida a M2.
 
 2. **Resolución Canónica de Especies (`speciesResolver.mjs`)**:
    - Mapea de forma centralizada y sin strings duplicados:
@@ -273,9 +275,10 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
 2. **Clasificación y Propiedad de la Interpolación (`interpolation.mjs`)**:
    - **Clasificación arquitectónica**: `PRESENTATION / NETWORK SMOOTHING`.
    - La interpolación **no pertenece al dominio puro**. Existe exclusivamente para mitigar el lag visual y la tasa de refresco en entidades remotas recibidas por red WebSocket.
-   - Se extrajo como función pura `interpolateScalar` e `interpolatePosition`:
-     $$x_{\text{nuevo}} = x + (x_{\text{target}} - x) \cdot (1 - e^{-\text{lerpFactor} \cdot \Delta t})$$
-   - Preserva con exactitud matemática el comportamiento visual original de `Animal.interpolate(dt, lerpFactor)`.
+   - Se extrajo como función realmente pura `interpolateScalar` / `interpolatePosition`: devuelve el punto suavizado sin mutar sus entradas.
+     $x_{\text{nuevo}} = x + (x_{\text{target}} - x) \cdot (1 - e^{-\text{lerpFactor} \cdot \Delta t})$
+   - El adaptador aplica el resultado sólo sobre su posición de render privada; `CreatureIndividual.position` permanece intacta durante el smoothing.
+   - Preserva con exactitud matemática la curva visual original de `Animal.interpolate(dt, lerpFactor)`.
 
 ### 7.4 M1.7 — Extracción del Contrato de Colisiones
 
@@ -322,3 +325,12 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
 - **M1-C (M1.10)**: Cierre de fase M1 y generación de Pull Request formal.
 - **M2 (World Simulation)**: Servidor autoritativo de movimiento espacial (coordenadas globales del mundo, zonas, shards). El cálculo de `MovementSystem` en el cliente actual se mantiene como predicción local y compatibilidad de renderizado.
 - **Fase Futura**: Migración 3D / Three.js y tipado TypeScript estricto.
+
+
+### 7.6 Hardening de revisión independiente
+
+- El loop real de exploración en `js/main.js` consume ahora `MovementSystem.calculateNextPosition`, `MovementSystem.clampToBounds` y `CollisionSystem.getAabb`, eliminando la duplicación de fórmulas que había quedado después de la primera extracción.
+- La restricción `mapWidth - ancho` / `mapHeight - alto` se conserva **como footprint de borde legacy** para no alterar la jugabilidad actual. No se considera geometría física canónica y deberá revisarse al introducir la simulación espacial autoritativa.
+- Los IDs `compat-<speciesId>-<counter>` son identificadores **locales de compatibilidad de runtime**. No son IDs de red, persistencia ni identidad global.
+- Entradas inválidas de posición, velocidad, tamaño, offsets, vida y especie fallan explícitamente; el adaptador ya no convierte silenciosamente valores corruptos a cero/defaults.
+- `cloneAt()` reutiliza un único adapter individual nuevo por clon y evita consumir IDs temporales adicionales durante la construcción de `Animal`.

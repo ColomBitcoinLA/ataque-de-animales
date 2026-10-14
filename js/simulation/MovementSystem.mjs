@@ -72,8 +72,21 @@ export class MovementSystem {
     if (typeof mapW !== "number" || !Number.isFinite(mapW) || mapW <= 0 || typeof mapH !== "number" || !Number.isFinite(mapH) || mapH <= 0) {
       throw new RangeError("MovementSystem: bounds debe tener dimensiones finitas positivas.");
     }
-    const entW = entityDimensions ? (entityDimensions.width ?? entityDimensions.ancho ?? 0) : 0;
-    const entH = entityDimensions ? (entityDimensions.height ?? entityDimensions.alto ?? 0) : 0;
+    let entW = 0;
+    let entH = 0;
+    if (entityDimensions !== null && entityDimensions !== undefined) {
+      if (typeof entityDimensions !== "object" || Array.isArray(entityDimensions)) {
+        throw new TypeError("MovementSystem: entityDimensions debe ser un objeto cuando se especifica.");
+      }
+      entW = entityDimensions.width ?? entityDimensions.ancho ?? 0;
+      entH = entityDimensions.height ?? entityDimensions.alto ?? 0;
+      if (
+        typeof entW !== "number" || !Number.isFinite(entW) || entW < 0 ||
+        typeof entH !== "number" || !Number.isFinite(entH) || entH < 0
+      ) {
+        throw new RangeError("MovementSystem: entityDimensions debe contener dimensiones finitas no negativas.");
+      }
+    }
 
     const maxW = Math.max(0, mapW - entW);
     const maxH = Math.max(0, mapH - entH);

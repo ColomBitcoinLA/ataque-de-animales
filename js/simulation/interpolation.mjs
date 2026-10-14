@@ -38,8 +38,8 @@ export function interpolateScalar(current, target, dt, lerpFactor = 12) {
 }
 
 /**
- * Interpola un punto 2D hacia un punto objetivo.
- * Si currentPosition implementa set(x, y), actualiza in-place.
+ * Interpola un punto 2D hacia un punto objetivo sin mutar ninguna entrada.
+ * La capa consumidora decide dónde almacenar el resultado visual.
  * @param {{ x: number, y: number, set?: Function }} currentPosition
  * @param {{ x: number, y: number }} targetPosition
  * @param {number} dt
@@ -50,15 +50,8 @@ export function interpolatePosition(currentPosition, targetPosition, dt, lerpFac
   if (!currentPosition || !targetPosition) {
     throw new TypeError("interpolatePosition: currentPosition y targetPosition son requeridos.");
   }
-  const nextX = interpolateScalar(currentPosition.x, targetPosition.x, dt, lerpFactor);
-  const nextY = interpolateScalar(currentPosition.y, targetPosition.y, dt, lerpFactor);
-
-  if (typeof currentPosition.set === "function") {
-    currentPosition.set(nextX, nextY);
-  } else {
-    currentPosition.x = nextX;
-    currentPosition.y = nextY;
-  }
-
-  return { x: nextX, y: nextY };
+  return {
+    x: interpolateScalar(currentPosition.x, targetPosition.x, dt, lerpFactor),
+    y: interpolateScalar(currentPosition.y, targetPosition.y, dt, lerpFactor),
+  };
 }
