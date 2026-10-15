@@ -31,6 +31,9 @@ const FILES_TO_CHECK = [
   "js/compat/LegacyAnimalAdapter.mjs",
   "js/compat/index.mjs",
   "js/compat/index.cjs",
+  "js/rules/elementalRules.mjs",
+  "js/rules/index.mjs",
+  "js/rules/index.cjs",
   "tests/helpers/server-process.cjs",
   "tests/helpers/websocket-client.cjs",
   "tests/integration/server-health.test.cjs",
@@ -40,6 +43,7 @@ const FILES_TO_CHECK = [
   "tests/unit/domain.test.cjs",
   "tests/unit/simulation.test.cjs",
   "tests/unit/compat.test.cjs",
+  "tests/unit/rules.test.cjs",
   "tests/unit/passwords.test.cjs",
   "tests/unit/google-token.test.cjs",
   "tests/unit/rate-limiter.test.cjs",
@@ -48,6 +52,9 @@ const FILES_TO_CHECK = [
 
 const BROWSER_ESM_FILES = [
   "js/entities/Animal.js",
+  "js/core/typeChart.js",
+  "js/3d/Arena3D.js",
+  "js/ui/UIManager.js",
   "js/main.js",
 ];
 

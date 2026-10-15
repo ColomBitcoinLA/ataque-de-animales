@@ -335,11 +335,82 @@ Las habilidades normalizadas en `SpeciesDefinition` **NUNCA** heredan la afinida
 
 ---
 
-## 8. Trabajo Diferido Formalmente a Superbloques Posteriores
+## 8. Superblock M1-C — Consolidación Final y Fuente Única Elemental
 
-- **M1-C (M1.8)**: Consolidación de la matriz de tipos elementales (`TYPE_MATCHUP`, `TIPOS`, `AFINIDAD_ANIMAL`) en una única fuente de verdad compartida.
-- **M1-C (M1.9)**: Consolidación final de la suite de pruebas unitarias y de integración.
-- **M1-C (M1.10)**: Cierre de fase M1 y generación de Pull Request formal.
-- **M2 (World Simulation)**: Servidor autoritativo de movimiento espacial (coordenadas globales del mundo, zonas, shards). El cálculo de `MovementSystem` en el cliente actual se mantiene como predicción local y compatibilidad de renderizado.
-- **Fase Futura**: Migración 3D / Three.js y tipado TypeScript estricto.
+> **Estado**: 🟢 M1-C IMPLEMENTADO (Listo para QA Manual y Cierre de M1)
+> **Alcance**: M1.8 (Consolidación de Reglas Elementales), M1.9 (Consolidación de Tests y Guardias Anti-duplicación), M1.10 (Gate de Integración y Preparación de Cierre)
+> **Garantía**: La matriz de daño, resistencias especiales, afinidades de mascotas y efectos cargados tienen una fuente canónica en `js/rules/`. Los detalles propios de presentación (por ejemplo, bordes de aros o CSS) siguen perteneciendo a la UI; no son reglas de combate.
+
+### 8.1 Arquitectura de la Fuente Única Elemental (`js/rules/`)
+
+Se eliminó la dispersión histórica de definiciones elementales (`typeChart.js`, `index.js`, `Animal.js`, `constants.mjs`, `defaultSpecies.mjs`) consolidando todas las reglas en un único subsistema neutral:
+
+```text
+               FUENTE CANÓNICA ÚNICA (js/rules/)
+               - js/rules/elementalRules.mjs (Datos y cálculo puro congelados)
+               - js/rules/index.mjs (Barrel ESM para navegador y frontend)
+               - js/rules/index.cjs (Wrapper CJS para Node v24 y backend)
+                                    │
+       ┌────────────────────────────┼────────────────────────────┬────────────────────────────┐
+       ▼                            ▼                            ▼                            ▼
+  DOMINIO PURO              FRONTEND / BROWSER           BACKEND / SERVER           COMPATIBILIDAD
+(js/domain/)                (js/core/typeChart.js)       (index.js)                 (js/entities/Animal.js)
+- VALID_AFFINITIES          - typeMultiplier(...)        - typeMultiplier(...)      - AFINIDAD_ANIMAL
+- LEGACY_ABILITY_ELEMENTS   - TIPOS / ELEMENTALES        - TYPE_MATCHUP             - ELEMENTOS_DISPONIBLES
+- defaultSpecies.mjs        - getEffectForCharged(...)   - AFINIDAD_ANIMAL          (aliases transicionales)
+```
+
+1. **Ubicación Canónica**:
+   - `js/rules/elementalRules.mjs`: Contiene las listas y estructuras inmutables profundamente congeladas (`Object.freeze`):
+     - `ELEMENTS` / `TIPOS`: `["FUEGO", "AGUA", "TIERRA", "ELECTRICO", "HIELO", "DRAGON"]`.
+     - `ATTACK_TO_ELEMENT` / `LEGACY_ABILITY_ELEMENTS`: Mapeo determinista de 6 IDs de botón a elementos.
+     - `SPECIES_DEFAULT_AFFINITIES` / `AFINIDAD_ANIMAL`: Afinidades canónicas de las 3 mascotas base.
+     - `TYPE_MATCHUP`: Matriz de ventajas y debilidades elementales (6x6).
+     - `DRAGON_RESISTANCES` y `DRAGON_RESIST_MULT`: Resistencia de Dragón a Fuego, Agua y Eléctrico (0.75x).
+     - `typeMultiplier(attacker, defender)`: Función de cálculo puro de daño elemental.
+     - `ELEMENTAL_METADATA` / `TIPOS_ELEMENTALES`: Emojis, colores, tooltips y efectos de ataque cargado.
+     - `getEffectForCharged(tipo)` y `emojiForTipo(tipo)`.
+2. **Interfaces de Consumo**:
+   - ESM: `js/rules/index.mjs` re-exporta la fuente canónica para módulos de navegador nativos.
+   - CommonJS: `js/rules/index.cjs` permite que `index.js` y las suites de prueba Node CommonJS consuman el módulo vía `require("./js/rules/index.cjs")`.
+
+### 8.2 Duplicados Eliminados y Adaptadores Preservados
+
+| Archivo | Antes (Duplicación Permanente) | Después (M1.8 / M1.9) |
+|---|---|---|
+| `js/core/typeChart.js` | Literal independiente de `TIPOS`, `TYPE_MATCHUP`, `DRAGON_RESISTANCES` y duplicado de `typeMultiplier` | Adaptador limpio que re-exporta directamente desde `../rules/index.mjs` sin romper APIs públicas de frontend |
+| `index.js` | Literal independiente de `TIPOS`, `TYPE_MATCHUP`, `DRAGON_RESISTANCES`, `AFINIDAD_ANIMAL` y duplicado de `typeMultiplier` | Consume `const { TIPOS, TYPE_MATCHUP, ... } = require("./js/rules/index.cjs")` |
+| `js/entities/Animal.js` | Literales independientes de `AFINIDAD_ANIMAL` y `ELEMENTOS_DISPONIBLES` | Re-exporta aliases transicionales derivados directamente de `../rules/index.mjs` |
+| `js/domain/constants.mjs` | Literales independientes de `VALID_AFFINITIES` y `LEGACY_ABILITY_ELEMENTS` | Deriva directamente de `CANONICAL_ELEMENTS` y `CANONICAL_ATTACK_TO_ELEMENT` de `../rules/index.mjs` |
+| `js/domain/defaultSpecies.mjs` | Asignaciones mágicas con strings duplicados | Utiliza `SPECIES_DEFAULT_AFFINITIES.Neptuno`, etc. |
+
+### 8.3 Invariantes Finales de Milestone 1 (M1)
+
+1. **Aislamiento de Dominio**: El dominio (`js/domain/`) permanece 100% puro y no conoce DOM, Canvas, Image, WebSocket ni Express.
+2. **Separación de Posición**: `CreatureIndividual.position` es el único dueño lógico de coordenadas en tiempo de ejecución. El adaptador mantiene `#renderPosition` privada para suavizado visual; `targetX/targetY` son alias de `CreatureIndividual.position` (posición lógica), no campos de render. La autoridad espacial real del servidor se implementará en M2.
+3. **Simulación Pura**: `MovementSystem` y `CollisionSystem` son funciones puras matemáticas de Euler y AABB sin dependencias externas de motores de física.
+4. **Fuente Única Elemental**: No existen matrices de tipos elementales duplicadas en ningún módulo del cliente, servidor o dominio.
+5. **Inmutabilidad Profunda**: Todas las definiciones de especie y matrices elementales están congeladas defensivamente.
+
+### 8.4 Defectos Legados Conocidos y Trabajo Diferido
+
+Para no alterar la jugabilidad existente de forma no intencionada, los siguientes comportamientos legacy se preservan explícitamente y se difieren a hitos posteriores:
+
+- **Quick Match (Matchmaking aleatorio)**: Presenta comportamientos erráticos conocidos en backend legacy; se difiere a la reestructuración de red en M3.
+- **Congelamiento de Par en Combate Privado**: En ciertas condiciones de reconexión WebSocket, una de las dos pantallas puede congelar su loop de animación. Difeerido a M3.
+- **UI / HUD Legacy**: La interfaz gráfica continúa siendo la plantilla HTML/CSS tradicional del curso. Se mantendrá hasta la modernización de presentación en M4.
+- **Servidor Autoritativo de Movimiento Espacial**: `MovementSystem` corre localmente en el cliente para respuesta instantánea. La simulación espacial de servidor (zonas/shards/mundo) corresponde formalmente a **M2 (World Simulation)**.
+
+### 8.5 Lista de Verificación para QA Manual en Navegador (Smoke Test)
+
+Antes de dar el cierre definitivo a M1 por parte de un operador humano:
+
+1. [ ] **Carga de la Aplicación**: Abrir `http://localhost:8080/` y verificar redirección a `/mokepon.html` sin errores en la consola del navegador.
+2. [ ] **Selección de Mascota**: Seleccionar a Neptuno, Tierrudo o Salamander y comprobar que el sprite de retrato y los botones de ataque cargan adecuadamente.
+3. [ ] **Skill Loadout**: Probar la personalización de habilidades elementales en la vista previa.
+4. [ ] **Mapa 2D**: Mover al personaje con teclas de dirección o botones en pantalla; verificar que el mapa delimita las colisiones y el movimiento es fluido.
+5. [ ] **Combate vs Bot (IA)**: Entrar en combate local, ejecutar ataques simples y cargados; verificar que los multiplicadores elementales y los efectos de estado (Quemadura, Congelación, etc.) se reflejan en las barras de vida.
+6. [ ] **Partida Multijugador Privada**: Crear sala con código, unirse con una segunda pestaña y verificar el intercambio de ataques elementales.
+7. [ ] **Pantalla de Resultados**: Confirmar que la victoria/derrota muestra los mensajes correctos y permite volver a jugar.
+8. [ ] **Consola de Desarrollador**: Verificar cero excepciones no controladas (`TypeError`, `ReferenceError`, etc.).
 

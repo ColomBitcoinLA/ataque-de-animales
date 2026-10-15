@@ -9,14 +9,28 @@
  * - Alternancia fluida Vista 3D / Vista 2D con fallback seguro.
  */
 
-const ELEMENT_STYLE = {
-  FUEGO: { color: 0xff5722, hex: "#ff5722", border: "#ff9800", emoji: "🔥" },
-  AGUA: { color: 0x03a9f4, hex: "#03a9f4", border: "#4fc3f7", emoji: "💧" },
-  TIERRA: { color: 0x8bc34a, hex: "#8bc34a", border: "#aed581", emoji: "🌱" },
-  ELECTRICO: { color: 0xffdd44, hex: "#ffdd44", border: "#fff59d", emoji: "⚡" },
-  HIELO: { color: 0x80deea, hex: "#80deea", border: "#b2ebf2", emoji: "❄️" },
-  DRAGON: { color: 0xab47bc, hex: "#ab47bc", border: "#ce93d8", emoji: "🐉" },
-};
+import { ELEMENTAL_METADATA, SPECIES_DEFAULT_AFFINITIES } from "../rules/index.mjs";
+
+// Bordes de los aros son detalles visuales de la arena; elemento, color base y emoji son canónicos.
+const RING_BORDERS = Object.freeze({
+  FUEGO: "#ff9800",
+  AGUA: "#4fc3f7",
+  TIERRA: "#aed581",
+  ELECTRICO: "#fff59d",
+  HIELO: "#b2ebf2",
+  DRAGON: "#ce93d8",
+});
+
+const ELEMENT_STYLE = Object.fromEntries(ELEMENTAL_METADATA.map((meta) => [
+  meta.nombre,
+  {
+    color: Number.parseInt(meta.color.slice(1), 16),
+    hex: meta.color,
+    border: RING_BORDERS[meta.nombre],
+    emoji: meta.emoji,
+  },
+]));
+
 
 const PET_IMAGES = {
   Neptuno: "./assets/cabezaNeptuno.webp",
@@ -24,11 +38,7 @@ const PET_IMAGES = {
   Tierrudo: "./assets/cabezaTierrudo.webp",
 };
 
-const PET_ELEMENT = {
-  Neptuno: "AGUA",
-  Salamander: "FUEGO",
-  Tierrudo: "TIERRA",
-};
+const PET_ELEMENT = SPECIES_DEFAULT_AFFINITIES;
 
 export class Arena3D {
   /**

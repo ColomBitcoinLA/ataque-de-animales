@@ -74,29 +74,14 @@ function titleForLevel(level) {
 function hpMaxForLevel(level) { return MAX_HP + Math.max(0, level - 1) * HP_PER_LEVEL; }
 function dmgBonusForLevel(level) { return Math.max(0, level - 1) * DMG_PER_LEVEL; }
 
-// Matriz Elemental estilo Pokémon (Fase 5: expandida a 6 tipos)
-const TIPOS = ["FUEGO", "AGUA", "TIERRA", "ELECTRICO", "HIELO", "DRAGON"];
-const TYPE_MATCHUP = {
-  FUEGO: { strong: ["TIERRA"], weak: ["AGUA"] },
-  AGUA: { strong: ["FUEGO"], weak: ["TIERRA"] },
-  TIERRA: { strong: ["AGUA"], weak: ["FUEGO"] },
-  ELECTRICO: { strong: ["AGUA"], weak: ["TIERRA"] },
-  HIELO: { strong: ["TIERRA", "DRAGON"], weak: ["FUEGO"] },
-  DRAGON: { strong: ["DRAGON"], weak: [] },
-};
-const DRAGON_RESISTANCES = ["FUEGO", "AGUA", "ELECTRICO"];
-const DRAGON_RESIST_MULT = 0.75;
-const AFINIDAD_ANIMAL = { Neptuno: "AGUA", Salamander: "FUEGO", Tierrudo: "TIERRA" };
-
-/** Devuelve el multiplicador de daño entre tipos (attacker → defender). */
-function typeMultiplier(attacker, defender) {
-  if (!TIPOS.includes(attacker) || !TIPOS.includes(defender)) return 1;
-  const m = TYPE_MATCHUP[attacker];
-  if (m.strong.includes(defender)) return 1.5;
-  if (m.weak.includes(defender)) return 0.7;
-  if (defender === "DRAGON" && DRAGON_RESISTANCES.includes(attacker)) return DRAGON_RESIST_MULT;
-  return 1;
-}
+// Reglas elementales consolidadas (M1.8) desde la fuente canónica única
+const {
+  TIPOS,
+  AFINIDAD_ANIMAL,
+  typeMultiplier,
+  DRAGON_RESIST_MULT,
+  getEffectForCharged,
+} = require("./js/rules/index.cjs");
 
 // ============================================================
 // FASE 4: Base de Datos Local (data/database.json)
@@ -487,16 +472,6 @@ function generateRoomCode() {
   let code = "";
   for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
-}
-
-function getEffectForCharged(tipo) {
-  if (tipo === "FUEGO") return "QUEMADO";
-  if (tipo === "AGUA") return "CONGELADO";
-  if (tipo === "TIERRA") return "ENVENENADO";
-  if (tipo === "ELECTRICO") return "PARALIZADO";
-  if (tipo === "HIELO") return "CONGELADO";
-  if (tipo === "DRAGON") return "DRAGONICO";
-  return "NINGUNO";
 }
 
 function calcDamage(attackType, charged, animalName, defenderAttack, defenderStatus, attackerDmgBonus = 0, move = null) {

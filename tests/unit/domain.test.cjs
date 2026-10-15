@@ -772,36 +772,47 @@ test("CreatureIndividual (H-1 Regression): same Position instance supplied to tw
 // 5. Parity Guard & Architectural Isolation Tests
 // ============================================================================
 
-test("Elemental parity guard: domain values match client, server and Animal legacy sources until M1.8", () => {
+test("Elemental canonical derivation: domain, client, server and Animal legacy derive from canonical rules (M1.8)", () => {
   const animalSource = fs.readFileSync(path.resolve(__dirname, "../../js/entities/Animal.js"), "utf8");
   const typeChartSource = fs.readFileSync(path.resolve(__dirname, "../../js/core/typeChart.js"), "utf8");
   const serverSource = fs.readFileSync(path.resolve(__dirname, "../../index.js"), "utf8");
+  const constantsSource = fs.readFileSync(path.resolve(__dirname, "../../js/domain/constants.mjs"), "utf8");
 
-  function extractStringArray(source, constName) {
-    const match = source.match(new RegExp(`(?:export\\s+)?const\\s+${constName}\\s*=\\s*\\[([\\s\\S]*?)\\]`));
-    assert.ok(match, `No se encontró array ${constName}`);
-    return [...match[1].matchAll(/["']([^"']+)["']/g)].map((item) => item[1]);
-  }
+  // 1. Verificar que los consumidores importan/requieren de la fuente canónica js/rules
+  assert.ok(
+    animalSource.includes("../rules/index.mjs") || animalSource.includes("../rules/elementalRules.mjs"),
+    "Animal.js debe derivar sus exportaciones de js/rules"
+  );
+  assert.ok(
+    typeChartSource.includes("../rules/index.mjs") || typeChartSource.includes("../rules/elementalRules.mjs"),
+    "typeChart.js debe derivar sus exportaciones de js/rules"
+  );
+  assert.ok(
+    serverSource.includes("./js/rules/index.cjs") || serverSource.includes("./js/rules"),
+    "index.js debe requerir js/rules"
+  );
+  assert.ok(
+    constantsSource.includes("../rules/index.mjs") || constantsSource.includes("../rules/elementalRules.mjs"),
+    "constants.mjs debe derivar de js/rules"
+  );
 
-  function extractAffinity(source, displayName) {
-    const match = source.match(new RegExp(`${displayName}\\s*:\\s*["']([^"']+)["']`));
-    assert.ok(match, `No se encontró afinidad para ${displayName}`);
-    return match[1];
-  }
+  // 2. Paridad de elementos de dominio con la lista canónica
+  assert.deepEqual(
+    [...VALID_AFFINITIES],
+    ["FUEGO", "AGUA", "TIERRA", "ELECTRICO", "HIELO", "DRAGON"]
+  );
 
-  assert.deepEqual(extractStringArray(animalSource, "ELEMENTOS_DISPONIBLES"), [...VALID_AFFINITIES]);
-  assert.deepEqual(extractStringArray(typeChartSource, "TIPOS"), [...VALID_AFFINITIES]);
-  assert.deepEqual(extractStringArray(serverSource, "TIPOS"), [...VALID_AFFINITIES]);
+  // 3. Paridad de afinidades de especies base
+  const expectedAffinities = {
+    Neptuno: "AGUA",
+    Salamander: "FUEGO",
+    Tierrudo: "TIERRA",
+  };
+  assert.equal(neptunoSpecies.affinity, expectedAffinities.Neptuno);
+  assert.equal(salamanderSpecies.affinity, expectedAffinities.Salamander);
+  assert.equal(tierrudoSpecies.affinity, expectedAffinities.Tierrudo);
 
-  for (const [displayName, species] of [
-    ["Neptuno", neptunoSpecies],
-    ["Salamander", salamanderSpecies],
-    ["Tierrudo", tierrudoSpecies],
-  ]) {
-    assert.equal(extractAffinity(animalSource, displayName), species.affinity);
-    assert.equal(extractAffinity(serverSource, displayName), species.affinity);
-  }
-
+  // 4. Paridad de mapeo de habilidades canónicas
   assert.deepEqual(
     LEGACY_ABILITY_ELEMENTS,
     {

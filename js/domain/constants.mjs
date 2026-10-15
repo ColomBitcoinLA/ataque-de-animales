@@ -1,16 +1,18 @@
 /**
- * Constantes fundamentales del dominio de Animal Combat (M1-A).
+ * Constantes fundamentales del dominio de Animal Combat (M1-A / M1.8).
  * Módulo puro: libre de dependencias de DOM, Browser, Canvas, Red o Servidor.
+ *
+ * Reglas elementales consolidadas (M1.8):
+ * VALID_AFFINITIES y LEGACY_ABILITY_ELEMENTS derivan directamente de
+ * la fuente canónica única en js/rules/index.mjs.
  */
 
-export const VALID_AFFINITIES = Object.freeze([
-  "FUEGO",
-  "AGUA",
-  "TIERRA",
-  "ELECTRICO",
-  "HIELO",
-  "DRAGON",
-]);
+import {
+  ELEMENTS as CANONICAL_ELEMENTS,
+  ATTACK_TO_ELEMENT as CANONICAL_ATTACK_TO_ELEMENT,
+} from "../rules/index.mjs";
+
+export const VALID_AFFINITIES = CANONICAL_ELEMENTS;
 
 export const LIFECYCLE_STATES = Object.freeze([
   "ACTIVE",
@@ -28,16 +30,4 @@ export const DEFAULT_TEMPERAMENTS = Object.freeze([
   "VALIENTE",
 ]);
 
-/**
- * Mapeo canónico temporal de IDs de habilidad legacy a elementos.
- * Mantiene la paridad con mokepon.js y Animal.js hasta la consolidación M1.8.
- */
-export const LEGACY_ABILITY_ELEMENTS = Object.freeze({
-  botonFuego: "FUEGO",
-  botonAgua: "AGUA",
-  botonTierra: "TIERRA",
-  botonElectrico: "ELECTRICO",
-  botonHielo: "HIELO",
-  botonDragon: "DRAGON",
-});
-
+export const LEGACY_ABILITY_ELEMENTS = CANONICAL_ATTACK_TO_ELEMENT;
