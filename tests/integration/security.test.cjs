@@ -53,10 +53,14 @@ test("Security SEC-03: Legitimate public frontend assets ARE accessible", async 
   const jsRes = await fetch(`${server.url}/js/main.js`);
   assert.equal(jsRes.status, 200);
 
-  // root redirects to /mokepon.html
+  // World entry point is public; existing classic page remains available.
+  const worldRes = await fetch(`${server.url}/world.html`);
+  assert.equal(worldRes.status, 200);
+  assert.ok((await worldRes.text()).includes("Animal Combat World"));
+
   const rootRes = await fetch(`${server.url}/`, { redirect: "manual" });
   assert.equal(rootRes.status, 302);
-  assert.equal(rootRes.headers.get("location"), "/mokepon.html");
+  assert.equal(rootRes.headers.get("location"), "/world.html");
 });
 
 test("Security SEC-12: Standard security headers are present", async (t) => {

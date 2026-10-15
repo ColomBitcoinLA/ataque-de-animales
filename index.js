@@ -252,9 +252,13 @@ app.get("/mokepon.html", (_req, res) => {
   res.sendFile(path.join(__dirname, "mokepon.html"));
 });
 
-// Redirección de la raíz a mokepon.html
+// M2 playable world route (classic remains available at /mokepon.html).
+app.get("/world.html", (_req, res) => {
+  res.sendFile(path.join(__dirname, "world.html"));
+});
+
 app.get("/", (_req, res) => {
-  res.redirect("/mokepon.html");
+  res.redirect("/world.html");
 });
 
 function authMiddleware(req, res, next) {
