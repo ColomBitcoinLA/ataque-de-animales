@@ -1,13 +1,19 @@
 /**
  * MovementSystem: Módulo puro de simulación matemática de movimiento (M1.6).
  * Libre de dependencias de Canvas, DOM, Image, WebSocket y Express.
- * 
+ *
  * Reglas de simulación:
  * - Integración de velocidad 2D independiente de frame rate: pos + vel * speed * dt.
  * - Restricción de límites de mapa (clamping): [0, mapW - ancho], [0, mapH - alto].
  * - Validación estricta: dt >= 0, speed >= 0, coordenadas finitas.
  * - No coerciona silenciosamente valores corruptos (NaN, Infinity).
+ *
+ * M2: la aritmética vive ahora en js/simulation/kinematics.mjs (fuente única compartida
+ * con el mundo 3D). Este módulo conserva su contrato público, su validación y sus
+ * mensajes de error; tests/unit/kinematics.test.cjs verifica la paridad exacta.
  */
+
+import { integrateVelocity, clampToMapDimensions } from "./kinematics.mjs";
 
 export class MovementSystem {
   /**
@@ -38,7 +44,7 @@ export class MovementSystem {
 
   /**
    * Calcula el siguiente punto sin modificar el objeto de entrada.
-   * Fórmula canónica: next = pos + vel * speed * dt.
+   * Fórmula canónica: next = pos + vel * speed * dt  (delegada a kinematics).
    * @param {{ x: number, y: number }} position
    * @param {{ x: number, y: number }} velocity
    * @param {number} speed
@@ -50,10 +56,7 @@ export class MovementSystem {
     if (!position || typeof position.x !== "number" || !Number.isFinite(position.x) || typeof position.y !== "number" || !Number.isFinite(position.y)) {
       throw new TypeError("MovementSystem: position debe ser un objeto con coordenadas numéricas finitas x e y.");
     }
-    return {
-      x: position.x + velocity.x * speed * dt,
-      y: position.y + velocity.y * speed * dt,
-    };
+    return integrateVelocity(position, velocity, speed, dt);
   }
 
   /**
@@ -88,13 +91,7 @@ export class MovementSystem {
       }
     }
 
-    const maxW = Math.max(0, mapW - entW);
-    const maxH = Math.max(0, mapH - entH);
-
-    return {
-      x: Math.max(0, Math.min(maxW, pos.x)),
-      y: Math.max(0, Math.min(maxH, pos.y)),
-    };
+    return clampToMapDimensions({ x: pos.x, y: pos.y }, { mapW, mapH, entityW: entW, entityH: entH });
   }
 
   /**

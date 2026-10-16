@@ -1,0 +1,317 @@
+/* Plazoleta del Río — HUD del POC Cali Viva (M2).
+   Objetivos: lectura inmediata, contraste suficiente sobre 3D, tamaños accesibles,
+   nada de información codificada solo por color. */
+
+:root {
+  color-scheme: dark;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ink: #f3f8f8;
+  --ink-soft: #c3d7d6;
+  --ink-dim: #9fb6b5;
+  --scrim: rgba(6, 20, 26, 0.74);
+  --scrim-strong: rgba(5, 16, 21, 0.9);
+  --line: rgba(180, 234, 196, 0.24);
+  --accent: #54f1ba;
+  --accent-warm: #ffb765;
+  --danger: #ff8f6b;
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-pill: 999px;
+  --fs-body: 15px;
+  --fs-small: 13px;
+  --fs-tiny: 12px;
+  --shadow: 0 14px 40px rgba(0, 0, 0, 0.38);
+}
+
+* { box-sizing: border-box; }
+
+/* Los paneles con `hidden` deben ocultarse SIEMPRE: sin esto, un `display: grid`
+   explícito gana al estilo del navegador y el overlay de carga tapa la escena. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #071a20;
+  color: var(--ink);
+}
+
+body.dragging { cursor: grabbing; }
+
+#world-scene { position: fixed; inset: 0; }
+#world-scene canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+.hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  display: block;
+}
+.hud > * { pointer-events: auto; }
+.hud [hidden] { display: none !important; }
+
+/* ------------------------------- Barra superior ------------------------- */
+.topbar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 22px;
+  background: linear-gradient(rgba(4, 16, 21, 0.78), rgba(4, 16, 21, 0));
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  font-size: var(--fs-body);
+}
+.brand small {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink-dim);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.16em;
+  font-weight: 600;
+}
+.brand-mark { color: var(--accent); font-size: 22px; }
+.chips { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.chip {
+  border: 1px solid var(--line);
+  background: var(--scrim);
+  border-radius: var(--radius-pill);
+  padding: 8px 14px;
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  backdrop-filter: blur(10px);
+}
+a.chip { color: var(--accent); text-decoration: none; }
+a.chip:hover, a.chip:focus-visible { background: rgba(30, 70, 66, 0.9); }
+
+/* ------------------------------- Tarjetas ------------------------------- */
+.card {
+  position: absolute;
+  background: var(--scrim);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  padding: 18px 20px;
+}
+.overline {
+  display: block;
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+}
+.objective { top: 92px; left: 22px; width: min(340px, calc(100vw - 44px)); }
+.objective h1 { margin: 10px 0 6px; font-size: 21px; letter-spacing: -0.01em; }
+.objective p { margin: 0; color: var(--ink-soft); font-size: var(--fs-body); line-height: 1.5; }
+.dots { display: flex; gap: 6px; margin-top: 14px; }
+.dots .dot {
+  width: 22px; height: 5px; border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+}
+.dots .dot.done { background: var(--accent); }
+.dots .dot.current { background: var(--accent-warm); }
+
+.pet {
+  bottom: 22px; left: 22px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px;
+}
+.pet .dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #ff8a4c; box-shadow: 0 0 16px rgba(255, 138, 76, 0.8);
+}
+.pet strong { display: block; font-size: var(--fs-body); }
+.pet small { display: block; margin-top: 3px; color: var(--ink-dim); font-size: var(--fs-small); }
+.trust { display: grid; gap: 5px; min-width: 132px; }
+.trust > span { font-size: var(--fs-tiny); color: var(--ink-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+.trust .bar { height: 8px; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.16); overflow: hidden; }
+.trust .bar i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #54f1ba, #ffd166); transition: width 240ms ease; }
+.trust em { font-size: var(--fs-tiny); color: var(--ink-soft); font-style: normal; }
+
+/* ------------------------------- Prompt --------------------------------- */
+.prompt {
+  position: absolute;
+  left: 50%; bottom: 108px;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px;
+  background: var(--scrim-strong);
+  border: 1px solid rgba(255, 209, 102, 0.42);
+  border-radius: var(--radius-pill);
+  padding: 10px 18px;
+  font-size: var(--fs-body);
+  box-shadow: var(--shadow);
+}
+.prompt kbd {
+  background: var(--accent-warm); color: #201200;
+  border-radius: 8px; padding: 3px 9px; font-weight: 800; font-size: var(--fs-small);
+}
+
+.toast {
+  position: absolute;
+  left: 50%; top: 96px; transform: translateX(-50%);
+  background: var(--scrim-strong);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 10px 18px;
+  font-size: var(--fs-small);
+  box-shadow: var(--shadow);
+}
+
+/* ------------------------------- Ayuda ---------------------------------- */
+.help {
+  position: absolute;
+  right: 22px; bottom: 22px;
+  display: grid; gap: 6px;
+  background: var(--scrim);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  max-width: 260px;
+}
+.help kbd {
+  display: inline-block;
+  min-width: 22px; text-align: center;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 6px;
+  padding: 2px 6px;
+  margin-right: 4px;
+  font-size: var(--fs-tiny);
+}
+
+/* ---------------------------- Controles táctiles ------------------------ */
+.pad { display: none; }
+@media (pointer: coarse) {
+  .pad {
+    display: flex;
+    position: absolute;
+    inset: auto 16px 16px 16px;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+  }
+  .pad .dpad { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(2, 56px); gap: 8px; }
+  .pad .dpad button:nth-child(1) { grid-column: 2; }
+  .pad button {
+    background: var(--scrim-strong);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    border-radius: var(--radius-md);
+    font-size: 20px;
+    min-width: 56px; min-height: 56px;
+  }
+  .pad #mobile-interact { min-width: 132px; min-height: 56px; font-size: var(--fs-body); background: rgba(84, 241, 186, 0.2); }
+  .help { display: none; }
+  .pet { bottom: auto; top: 168px; }
+}
+
+/* ------------------------------- Métricas -------------------------------- */
+.perf {
+  position: fixed;
+  top: 16px; right: 16px;
+  width: 300px;
+  background: rgba(3, 12, 16, 0.92);
+  border: 1px solid rgba(84, 241, 186, 0.4);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-tiny);
+  z-index: 40;
+}
+.perf header {
+  display: flex; justify-content: space-between; align-items: center;
+  color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.perf .perf-row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; color: var(--ink-soft); }
+.perf .perf-row strong { color: var(--ink); font-weight: 600; }
+
+/* ------------------------------- Diálogos -------------------------------- */
+.overlay {
+  position: fixed; inset: 0;
+  display: grid; place-items: center;
+  background: rgba(3, 10, 13, 0.62);
+  backdrop-filter: blur(6px);
+  z-index: 50;
+  padding: 24px;
+}
+.modal {
+  width: min(560px, 100%);
+  background: linear-gradient(180deg, rgba(9, 26, 32, 0.97), rgba(6, 18, 23, 0.98));
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  padding: 26px 28px;
+}
+.modal h2 { margin: 12px 0 10px; font-size: 22px; }
+.modal p { margin: 0 0 12px; color: var(--ink-soft); line-height: 1.6; font-size: var(--fs-body); }
+.modal ul { margin: 0 0 14px; padding-left: 20px; color: var(--ink-soft); font-size: var(--fs-small); line-height: 1.7; }
+.reward {
+  display: inline-block;
+  background: rgba(255, 209, 102, 0.16);
+  border: 1px dashed rgba(255, 209, 102, 0.6);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  color: #ffe1a3;
+  font-size: var(--fs-small);
+}
+.actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; flex-wrap: wrap; }
+.actions button, .btn {
+  font: inherit;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+  padding: 11px 20px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  font-size: var(--fs-body);
+}
+.actions button.primary, .btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #03231a;
+  font-weight: 700;
+}
+.actions button:focus-visible, .btn:focus-visible, .pad button:focus-visible {
+  outline: 3px solid var(--accent-warm);
+  outline-offset: 2px;
+}
+
+/* ------------------------------- Carga ---------------------------------- */
+.loading {
+  position: fixed; inset: 0;
+  display: grid; place-content: center; justify-items: center; gap: 10px;
+  background: radial-gradient(circle at 50% 30%, #123642, #05141a 70%);
+  z-index: 60;
+  text-align: center;
+  padding: 24px;
+}
+.loading .mark { font-size: 46px; }
+.loading h2 { margin: 6px 0 0; font-size: 20px; }
+.loading p { margin: 0; color: var(--ink-dim); font-size: var(--fs-small); }
+
+@media (max-width: 760px) {
+  .objective { top: 84px; left: 14px; right: 14px; width: auto; }
+  .objective h1 { font-size: 18px; }
+  .chip { padding: 7px 11px; font-size: var(--fs-tiny); }
+  .prompt { bottom: 96px; font-size: var(--fs-small); }
+  .perf { width: calc(100% - 32px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

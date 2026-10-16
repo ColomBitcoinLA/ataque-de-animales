@@ -1,4 +1,12 @@
-/** Pure client-side prototype geometry. Server world authority is planned for M2/M3. */
+/** Pure client-side prototype geometry. Server world authority is planned for M2/M3.
+ *
+ * M2: la aritmética de movimiento de este módulo se delegó en
+ * js/simulation/kinematics.mjs (fuente única compartida con el modo clásico).
+ * La semántica observada no cambia: avance por ejes con deslizamiento, bloqueo
+ * con radio incluido y rechazo explícito de dt/speed inválidos.
+ */
+import { advanceDirected, canOccupy as canOccupyShared, clamp as clampShared } from "../simulation/kinematics.mjs";
+
 export const WORLD_LIMIT = 49;
 export const PLAYER_RADIUS = 0.72;
 export const SPAWN = Object.freeze({ x: -23, z: 6 });
@@ -16,26 +24,39 @@ export const SOLID_OBJECTS = Object.freeze([
   [-5, 9, 5, 15], [19, 33, -29, -14],
 ].map(([minX,maxX,minZ,maxZ]) => Object.freeze({ minX,maxX,minZ,maxZ })));
 
-export function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
-export function canOccupy(x, z, solids = SOLID_OBJECTS, radius = PLAYER_RADIUS) {
-  if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(radius) || radius < 0) return false;
-  if (Math.abs(x) + radius > WORLD_LIMIT || Math.abs(z) + radius > WORLD_LIMIT) return false;
-  return !solids.some(s => x + radius > s.minX && x - radius < s.maxX && z + radius > s.minZ && z - radius < s.maxZ);
+const WORLD_AREA = Object.freeze({
+  minX: -WORLD_LIMIT,
+  maxX: WORLD_LIMIT,
+  minZ: -WORLD_LIMIT,
+  maxZ: WORLD_LIMIT,
+});
+
+/** @param {number} value @param {number} min @param {number} max @returns {number} */
+export function clamp(value, min, max) {
+  return clampShared(value, min, max);
 }
+
+export function canOccupy(x, z, solids = SOLID_OBJECTS, radius = PLAYER_RADIUS) {
+  return canOccupyShared(x, z, radius, solids, WORLD_LIMIT);
+}
+
 export function advance(position, direction, speed, dt, solids = SOLID_OBJECTS) {
   if (!Number.isFinite(dt) || dt < 0 || dt > 0.1) throw new RangeError('Invalid frame delta');
   if (!Number.isFinite(speed) || speed < 0) throw new RangeError('Invalid movement speed');
-  const dx = Number(direction.x), dz = Number(direction.z);
+  const dx = Number(direction?.x), dz = Number(direction?.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz)) throw new TypeError('Invalid movement vector');
-  const magnitude = Math.hypot(dx,dz);
-  if (!magnitude || !dt) return { x: position.x, z: position.z };
-  const stepX = dx / magnitude * speed * dt;
-  const stepZ = dz / magnitude * speed * dt;
-  let x = position.x, z = position.z;
-  if (canOccupy(x + stepX, z, solids)) x += stepX;
-  if (canOccupy(x, z + stepZ, solids)) z += stepZ;
-  return { x, z };
+  const result = advanceDirected({
+    position: { x: Number(position?.x), z: Number(position?.z) },
+    direction: { x: dx, z: dz },
+    speed,
+    dt,
+    solids,
+    area: WORLD_AREA,
+    radius: PLAYER_RADIUS,
+  });
+  return { x: result.x, z: result.z };
 }
+
 export function closestInteraction(position, locations = LANDMARKS, threshold = 3.2) {
   return locations.reduce((nearest, candidate) => {
     const distance = Math.hypot(position.x - candidate.x, position.z - candidate.z);

@@ -31,6 +31,7 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "google-auth-library": "^11.1.0",
+    "three": "0.160.1",
     "ws": "^8.18.3"
   },
   "packageManager": "pnpm@12.3.4"

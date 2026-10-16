@@ -253,6 +253,12 @@ app.get("/mokepon.html", (_req, res) => {
 });
 
 // M2 playable world route (classic remains available at /mokepon.html).
+app.get("/plazoleta.html", (_req, res) => {
+  // POC Cali Viva: CSP estricta (three vendorizado en el propio origen, sin CDNs).
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'self'");
+  res.sendFile(path.join(__dirname, "plazoleta.html"));
+});
+
 app.get("/world.html", (_req, res) => {
   res.sendFile(path.join(__dirname, "world.html"));
 });
