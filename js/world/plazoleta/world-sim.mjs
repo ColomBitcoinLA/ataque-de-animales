@@ -16,12 +16,15 @@
 import { advanceDirectedInto } from "../../simulation/kinematics.mjs";
 import { blockedAt, surfaceHeightAt, zoneAt, PLAZOLETA_MAP } from "./map-v1.mjs";
 import { createLucia, updateLucia, createPigeons, updatePigeons } from "./behaviors.mjs";
+import { MOVEMENT, createControlState, stepControl, classifyLocomotion } from "./control-feel.mjs";
 
 export const SIM = Object.freeze({
   hz: 60,
-  walkSpeed: 2.5,
-  runSpeed: 5.4,
-  turnRate: 8.2,
+  // Las velocidades viven en control-feel (dueño de la sensación de control): una sola verdad.
+  walkSpeed: MOVEMENT.walkSpeed,
+  runSpeed: MOVEMENT.runSpeed,
+  /** @deprecated R1-A: el giro lo gobierna `control-feel` (turnRateIdle/turnRateMoving). */
+  turnRate: MOVEMENT.turnRateIdle,
   strideWalk: 0.62,
   strideRun: 0.98,
   playerRadius: 0.34,
@@ -78,6 +81,8 @@ export function createWorldState(map = PLAZOLETA_MAP, { seed = 20261006 } = {}) 
     tick: 0,
     time: 0,
     rng: seed >>> 0,
+    /** Estado de control (aceleración/frenada/giro): dueño de la sensación de movimiento. */
+    control: createControlState({ heading: map.spawn.heading }),
     player: {
       id: "salamander",
       x: map.spawn.x,
@@ -88,6 +93,11 @@ export function createWorldState(map = PLAZOLETA_MAP, { seed = 20261006 } = {}) 
       prevZ: map.spawn.z,
       heading: map.spawn.heading,
       speed: 0,
+      sprint: 0,
+      align: 1,
+      aligning: false,
+      running: false,
+      locomotionSpeed: 0,
       locomotion: "idle",
       phase: 0,
       distance: 0,
@@ -139,33 +149,41 @@ export function turnToward(current, target, maxDelta) {
   return current + Math.sign(delta) * maxDelta;
 }
 
+/**
+ * Locomoción del protagonista (R1-A).
+ *
+ * La sensación de control vive en `control-feel` (aceleración, frenada, rampa de carrera
+ * y giro suavizado). Aquí sólo se aplica el desplazamiento con la cinemática compartida.
+ * La frenada sigue integrando aunque no haya input, de modo que la mascota se desliza
+ * hasta detenerse en lugar de cortar en seco.
+ */
 function updatePlayer(state, input, dt) {
   const p = state.player;
-  const moveX = Number.isFinite(input?.moveX) ? input.moveX : 0;
-  const moveZ = Number.isFinite(input?.moveZ) ? input.moveZ : 0;
-  const running = Boolean(input?.run);
-  const magnitude = Math.hypot(moveX, moveZ);
+  const control = state.control;
 
   p.prevX = p.x;
   p.prevZ = p.z;
   p.blockedX = false;
   p.blockedZ = false;
 
-  if (magnitude > 0.001) {
-    const dirX = moveX / magnitude;
-    const dirZ = moveZ / magnitude;
-    const desiredHeading = Math.atan2(dirX, dirZ);
-    p.heading = turnToward(p.heading, desiredHeading, SIM.turnRate * dt);
-    const speed = running ? SIM.runSpeed : SIM.walkSpeed;
-    p.speed = speed;
+  stepControl(control, input, dt);
+  p.heading = control.heading;
+  p.speed = control.speed;
+  p.sprint = control.sprint;
+  p.align = control.align;
+  p.aligning = control.aligning;
+  p.locomotionSpeed = control.effectiveSpeed;
+
+  const mustIntegrate = control.effectiveSpeed > 0.001;
+  if (mustIntegrate) {
     const solids = p.feetY > SIM.deckThreshold ? state.solidsDeck : state.solidsGround;
-    state.scratch.dir.x = dirX;
-    state.scratch.dir.z = dirZ;
+    state.scratch.dir.x = control.dirX;
+    state.scratch.dir.z = control.dirZ;
     const result = advanceDirectedInto(
       state.scratch.move,
       p,
       state.scratch.dir,
-      speed,
+      control.effectiveSpeed,
       dt,
       solids,
       state.playArea,
@@ -177,13 +195,12 @@ function updatePlayer(state, input, dt) {
       p.x = result.x;
       p.z = result.z;
       p.distance += result.distance;
-      p.phase += result.distance / (running ? SIM.strideRun : SIM.strideWalk);
+      const stride = control.locomotion === "run" ? SIM.strideRun : SIM.strideWalk;
+      p.phase += result.distance / stride;
     }
-    p.locomotion = running ? "run" : "walk";
-  } else {
-    p.speed = 0;
-    p.locomotion = "idle";
   }
+  p.locomotion = classifyLocomotion(control.speed);
+  p.running = p.locomotion === "run";
 
   if (p.blockedX || p.blockedZ) state.stats.blockedTicks++;
   syncFeet(state);
@@ -230,8 +247,7 @@ export function stepWorld(state, input, dt) {
   updateLucia(state, step);
   updatePigeons(state, step);
   updateInteraction(state);
-  return state;
-}
+  return state;}
 
 /** Ejecuta ticks fijos deterministas (tests y arranque). */
 export function runTicks(state, input, ticks, dt = 1 / SIM.hz) {
@@ -316,6 +332,11 @@ export function worldSummary(state) {
     trust: state.quest.trust.lucia,
     locomotion: state.player.locomotion,
     speed: state.player.speed,
+    sprint: state.player.sprint,
+    aligning: state.player.aligning,
+    running: state.player.running,
+    /** Velocidad realmente aplicada este tick (incluye la penalización por girar). */
+    appliedSpeed: state.player.locomotionSpeed,
   };
 }
 

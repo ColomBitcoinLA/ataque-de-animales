@@ -45,6 +45,10 @@
         <div class="bar" role="img" aria-label="Nivel de confianza"><i id="trust-fill"></i></div>
         <em id="trust-value">0/5</em>
       </div>
+      <div class="gait">
+        <span>Ritmo</span>
+        <div class="bar" role="img" aria-label="Velocidad de la mascota"><i id="speed-fill"></i></div>
+      </div>
     </section>
 
     <div id="prompt" class="prompt" hidden aria-live="polite">
@@ -52,12 +56,15 @@
     </div>
 
     <div id="toast" class="toast" role="status" hidden></div>
+    <!-- Resultado del autodiagnóstico (?selftest=1). Oculto: es evidencia para revisión automática. -->
+    <div id="selftest-result" hidden aria-hidden="true"></div>
 
     <div id="help" class="help">
-      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover</span>
-      <span><kbd>Shift</kbd> correr</span>
+      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover (relativo a la cámara)</span>
+      <span><kbd>Shift</kbd> correr (mantener)</span>
       <span><kbd>E</kbd> interactuar</span>
       <span>Arrastra para girar · rueda o pinza para acercar</span>
+      <span>La cámara se recentra sola al avanzar</span>
       <span><kbd>H</kbd> ocultar esta ayuda</span>
     </div>
 
