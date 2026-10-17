@@ -51,14 +51,21 @@ test("POC Cali Viva: ruta, CSP estricta y convivencia con el modo clásico", asy
   assert.match(three.headers.get("content-type") || "", /javascript/);
   assert.ok((await three.text()).length > 100000, "el build vendorizado debe estar completo");
 
-  // Rutas previas intactas: modo clásico, mundo v0 y redirect raíz sin cambios.
+  // El mundo R1-A ahora es la entrada por defecto; V0 y modo clásico siguen disponibles.
   const classic = await fetch(`${server.url}/mokepon.html`);
   assert.equal(classic.status, 200, "el modo clásico debe seguir disponible");
 
-  const world = await fetch(`${server.url}/world.html`);
-  assert.equal(world.status, 200, "el prototipo v0 debe seguir disponible");
+  const v0 = await fetch(`${server.url}/world-v0.html`);
+  assert.equal(v0.status, 200, "el prototipo V0 debe estar disponible como referencia");
 
-  const root = await fetch(`${server.url}/`, { redirect: "manual" });
-  assert.equal(root.status, 302);
-  assert.equal(root.headers.get("location"), "/world.html");
+  for (const route of ["/", "/world.html"]) {
+    const response = await fetch(`${server.url}${route}`, { redirect: "manual" });
+    assert.equal(response.status, 302, `${route} debe redirigir a R1-A`);
+    assert.equal(response.headers.get("location"), "/plazoleta.html");
+  }
+
+  const latest = await fetch(`${server.url}/plazoleta.html`);
+  assert.equal(latest.status, 200);
+  assert.ok((await latest.text()).includes("Ritmo"), "la ruta R1-A debe incluir su HUD actualizado");
+
 });

@@ -138,6 +138,13 @@ a.chip:hover, a.chip:focus-visible { background: rgba(30, 70, 66, 0.9); }
 .trust .bar i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #54f1ba, #ffd166); transition: width 240ms ease; }
 .trust em { font-size: var(--fs-tiny); color: var(--ink-soft); font-style: normal; }
 
+/* R1-A: barra de ritmo — evidencia visible de aceleración, frenada y giro. */
+.gait { display: grid; gap: 5px; min-width: 92px; }
+.gait > span { font-size: var(--fs-tiny); color: var(--ink-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+.gait .bar { height: 8px; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.16); overflow: hidden; }
+.gait .bar i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #7fd7ff, #54f1ba); transition: width 120ms linear; }
+.gait .bar i.aligning { background: linear-gradient(90deg, #ffb765, #ff8a4c); }
+
 /* ------------------------------- Prompt --------------------------------- */
 .prompt {
   position: absolute;

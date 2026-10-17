@@ -14,18 +14,28 @@
  */
 
 import { PLAZOLETA_MAP, cameraSolids, plannedDrawCalls, plannedDrawCallsWithShadows } from "./map-v1.mjs";
-import { createWorldState, stepWorld, activate, drainEvents, worldSummary, SIM } from "./world-sim.mjs";
+import { createWorldState, stepWorld, activate, drainEvents, worldSummary, playerBlocked, SIM } from "./world-sim.mjs";
 import { dialogs } from "./behaviors.mjs";
+import { intentFromInput } from "./control-feel.mjs";
+import {
+  createSelfTestTracker,
+  trackSelfTest,
+  summarizeSelfTest,
+  selfTestTitle,
+  SELFTEST_STEPS,
+  SELFTEST_DURATION,
+} from "./selftest.mjs";
 import { createRenderKit, QUALITY_TIERS } from "./render-kit.mjs";
 import { createMaterialLibrary, createCanvasTextures, buildStaticScene } from "./props.mjs";
 import { createCharacterMaterials, createSalamanderRig, createLuciaRig, updateSalamanderRig, updateLuciaRig, setAnimationClock } from "./characters.mjs";
-import { createCameraState, solveCamera, adjustZoom, applyLook, CAMERA_LIMITS } from "./camera-solver.mjs";
+import { createCameraState, solveCamera, adjustZoom, applyLook, pointInsideSolids, CAMERA_LIMITS } from "./camera-solver.mjs";
 import { createHud } from "./hud.mjs";
 import { createPerfMonitor, onPerfSample } from "./perf.mjs";
 
 const params = new URLSearchParams(location.search);
 const qualityName = QUALITY_TIERS[params.get("quality")] ? params.get("quality") : "high";
 const perfEnabled = params.get("perf") === "1";
+const selfTestEnabled = params.get("selftest") === "1";
 const seed = Number.parseInt(params.get("seed") ?? "20261006", 10) || 20261006;
 
 const container = document.getElementById("world-scene");
@@ -74,6 +84,8 @@ function start() {
     perf.attachGpuTimer(kit.renderer);
     onPerfSample(perf, (snapshot) => {
       hud.updatePerf(snapshot, perf.budget);
+      // En modo autodiagnóstico el título lo posee el resultado del guion, no las métricas.
+      if (selfTestEnabled) return;
       hud.setTitle(
         `perf p50=${snapshot.p50.toFixed(2)} p95=${snapshot.p95.toFixed(2)} fps=${snapshot.fps.toFixed(1)} ` +
         `calls=${snapshot.calls} tris=${snapshot.triangles} heapMB=${snapshot.heapMB ? snapshot.heapMB.toFixed(1) : "n/a"}`
@@ -224,28 +236,120 @@ function start() {
   let accumulator = 0;
   let elapsed = 0;
   let paused = false;
-  let intentX = 0;
-  let intentZ = 0;
 
   const FIXED_DT = 1 / SIM.hz;
 
-  /** Dirección de mundo derivada de la cámara (intención), sin duplicar cinemática. */
-  function updateIntent() {
-    const yaw = cameraState.yaw;
-    const forwardX = -Math.sin(yaw);
-    const forwardZ = -Math.cos(yaw);
-    const rightX = Math.cos(yaw);
-    const rightZ = -Math.sin(yaw);
-    const x = forwardX * input.forward + rightX * input.strafe;
-    const z = forwardZ * input.forward + rightZ * input.strafe;
-    const magnitude = Math.hypot(x, z);
-    if (magnitude > 0.001) {
-      intentX = x / magnitude;
-      intentZ = z / magnitude;
-    } else {
-      intentX = 0;
-      intentZ = 0;
+  // Buffers reutilizados: el bucle no asigna memoria.
+  const intent = { x: 0, z: 0, magnitude: 0 };
+  const subjectPoint = { x: 0, y: 0, z: 0 };
+  const focusPoint = { x: 0, y: 0, z: 0 };
+  let focusActive = false;
+
+  /* Autodiagnóstico opcional (?selftest=1): recorre un guion y publica el resultado. */
+  const selfTestTracker = selfTestEnabled ? createSelfTestTracker() : null;
+  const selfTestBaseline = selfTestEnabled
+    ? { x: state.player.x, z: state.player.z, distance: state.player.distance }
+    : null;
+  let selfTestReported = false;
+  let framesSeen = 0;
+
+  /**
+   * Guion del autodiagnóstico. Se ejecuta de forma DETERMINISTA en un solo frame:
+   * recorre el guion con pasos fijos de 1/60 s, aplicando el mismo mapeo de input, la
+   * misma simulación y el mismo solucionador de cámara que el bucle normal. Así el
+   * resultado no depende de cuántos frames logre completar el navegador (Chrome headless
+   * con rasterizador por software completa muy pocos).
+   */
+  function runSelfTestNow() {
+    const totalSteps = Math.ceil(SELFTEST_DURATION / FIXED_DT);
+    for (let i = 0; i < totalSteps; i++) {
+      let phaseKeys = [];
+      for (const step of SELFTEST_STEPS) {
+        if (state.time < step.until) { phaseKeys = step.keys; break; }
+      }
+      keys.clear();
+      for (const code of phaseKeys) keys.add(code);
+      refreshInput();
+      updateIntent();
+      stepWorld(state, { moveX: intent.x, moveZ: intent.z, run: input.run }, FIXED_DT);
+      subjectPoint.x = state.player.x;
+      subjectPoint.y = state.player.feetY;
+      subjectPoint.z = state.player.z;
+      solveCamera(cameraState, {
+        subject: subjectPoint,
+        subjectSpeed: state.player.locomotionSpeed,
+        subjectHeading: state.player.heading,
+        cameraSolids: cameraSolidsList,
+        dt: FIXED_DT,
+        outPosition: camPosition,
+        outTarget: camTarget,
+        focusTarget: null,
+      });
+      trackSelfTest(selfTestTracker, state, cameraState, {
+        cameraPenetration: pointInsideSolids(cameraState.position, cameraSolidsList),
+        bodyPenetration: playerBlocked(state),
+      });
     }
+    keys.clear();
+    refreshInput();
+
+    // Fase 2: comprobación de oclusión contra el muro oeste de la casona (a ~2,4 m).
+    // Verifica en el navegador real que el brazo se acorta, entra el hombro y la cámara
+    // no atraviesa geometría. El punto de apoyo está libre de sólidos (verificado en map).
+    state.player.x = 2.2;
+    state.player.z = 0.5;
+    state.player.heading = Math.PI / 2;
+    cameraState.yaw = Math.PI / 2;
+    cameraState.manualTimer = 0;
+    for (let i = 0; i < 45; i++) {
+      subjectPoint.x = state.player.x;
+      subjectPoint.y = state.player.feetY;
+      subjectPoint.z = state.player.z;
+      solveCamera(cameraState, {
+        subject: subjectPoint,
+        subjectSpeed: 0,
+        subjectHeading: state.player.heading,
+        cameraSolids: cameraSolidsList,
+        dt: FIXED_DT,
+        outPosition: camPosition,
+        outTarget: camTarget,
+        focusTarget: null,
+      });
+      trackSelfTest(selfTestTracker, state, cameraState, {
+        cameraPenetration: pointInsideSolids(cameraState.position, cameraSolidsList),
+        bodyPenetration: playerBlocked(state),
+      });
+    }
+    reportSelfTest();
+  }
+
+  function reportSelfTest() {
+    if (selfTestReported) return;
+    selfTestReported = true;
+    const summary = summarizeSelfTest({
+      state,
+      cameraState,
+      tracker: selfTestTracker,
+      perf: perfEnabled ? perf : null,
+      baseline: selfTestBaseline,
+      // Lectura directa del renderer: es el número medido del último frame renderizado.
+      liveCalls: kit.renderer.info?.render?.calls ?? null,
+    });
+    const title = selfTestTitle(summary);
+    hud.setTitle(title);
+    // Evidencia textual persistente para revisión automática (Chrome headless --dump-dom).
+    const resultElement = document.getElementById("selftest-result");
+    if (resultElement) resultElement.textContent = `${title} :: ${JSON.stringify(summary.checks)}`;
+    console.log("[cali-viva][selftest]", JSON.stringify(summary));
+    hud.toast(summary.ok ? "Autodiagnóstico R1-A: PASS" : `Autodiagnóstico R1-A: revisar (${title})`, 6000);
+  }
+
+  /**
+   * Dirección de mundo derivada de la cámara.
+   * El mapeo vive en control-feel (probado en Node): aquí sólo se le pasa el input crudo.
+   */
+  function updateIntent() {
+    intentFromInput(input, cameraState.yaw, intent);
   }
 
   function frame(now) {
@@ -255,27 +359,51 @@ function start() {
     const frameDt = Math.min((now - lastTime) / 1000, 0.25);
     lastTime = now;
     elapsed += frameDt;
+    framesSeen++;
+    // El autodiagnóstico corre en el segundo frame: en el primero ya hubo un render real,
+    // así que `renderer.info` tiene valores medidos que reportar.
+    if (selfTestEnabled && !selfTestReported && framesSeen >= 2) runSelfTestNow();
 
     if (perfEnabled) perf.beginGpuQuery();
     const simStart = performance.now();
     accumulator += frameDt;
+    // En modo autodiagnóstico se permiten más pasos fijos por frame: un rasterizador por
+    // software (o Chrome headless) completa muy pocos frames y si no, el guion no avanza.
+    // Los pasos siguen siendo de 1/60 s exactos: la simulación es la misma.
+    const maxStepsPerFrame = selfTestEnabled ? 20 : 5;
     let steps = 0;
-    while (accumulator >= FIXED_DT && steps < 5) {
+    while (accumulator >= FIXED_DT && steps < maxStepsPerFrame) {
       updateIntent();
-      stepWorld(state, { moveX: intentX, moveZ: intentZ, run: input.run }, FIXED_DT);
+      stepWorld(state, { moveX: intent.x, moveZ: intent.z, run: input.run }, FIXED_DT);
       accumulator -= FIXED_DT;
       steps++;
     }
-    if (steps === 5) accumulator = 0;
+    // Alfa de interpolación: la cámara y la presentación leen una posición suave
+    // aunque la simulación avance a pasos fijos de 60 Hz.
+    const alpha = Math.min(1, Math.max(0, accumulator / FIXED_DT));
+    subjectPoint.x = state.player.prevX + (state.player.x - state.player.prevX) * alpha;
+    subjectPoint.z = state.player.prevZ + (state.player.z - state.player.prevZ) * alpha;
+    subjectPoint.y = state.player.feetY;
+    if (steps === maxStepsPerFrame) accumulator = 0;
     perf.recordSim(performance.now() - simStart);
 
     const animStart = performance.now();
     setAnimationClock(elapsed);
     const interaction = state.interaction;
     let interactionHeading = null;
+    focusActive = false;
     if (interaction.inRange) {
       const poi = state.map.interactables.find((item) => item.id === interaction.targetId);
-      if (poi) interactionHeading = Math.atan2(poi.x - state.player.x, poi.z - state.player.z);
+      if (poi) {
+        interactionHeading = Math.atan2(poi.x - state.player.x, poi.z - state.player.z);
+        // Durante un diálogo la cámara encuadra al interlocutor (R1-A).
+        if (hud.isDialogOpen()) {
+          focusPoint.x = poi.x;
+          focusPoint.y = poi.feetY ?? 0;
+          focusPoint.z = poi.z;
+          focusActive = true;
+        }
+      }
     }
     updateSalamanderRig(salamander, state.player, frameDt, {
       interactionHeading,
@@ -293,12 +421,14 @@ function start() {
 
     // Cámara: pura, resuelta contra los sólidos de cámara del mapa.
     solveCamera(cameraState, {
-      subject: { x: state.player.x, y: state.player.feetY, z: state.player.z },
-      subjectSpeed: state.player.speed,
+      subject: subjectPoint,
+      subjectSpeed: state.player.locomotionSpeed,
+      subjectHeading: state.player.heading,
       cameraSolids: cameraSolidsList,
       dt: frameDt,
       outPosition: camPosition,
       outTarget: camTarget,
+      focusTarget: focusActive ? focusPoint : null,
     });
     kit.camera.position.set(camPosition.x, camPosition.y, camPosition.z);
     kit.camera.lookAt(camTarget.x, camTarget.y, camTarget.z);
@@ -312,7 +442,7 @@ function start() {
     perf.recordRender(performance.now() - renderStart);
     if (perfEnabled) perf.endGpuQuery();
 
-    updateHud();
+    if (selfTestEnabled && !selfTestReported) runSelfTestNow();    updateHud();
 
     if (perfEnabled) {
       perf.endFrame(now, kit.renderer);
@@ -328,10 +458,19 @@ function start() {
     const summary = worldSummary(state);
     hud.setObjective(summary.objective, summary.stepIndex, summary.stepsTotal);
     hud.setContext(summary.zone.label, PLAZOLETA_MAP.timeOfDay.label);
+    const gait = summary.locomotion === "idle"
+      ? "explorando · en reposo"
+      : summary.locomotion === "run"
+        ? "explorando · corriendo"
+        : "explorando · caminando";
     hud.setPet({
       name: "Salamander",
-      meta: state.player.locomotion === "idle" ? "explorando · en reposo" : `explorando · ${summary.locomotion}`,
+      meta: gait,
       trust: summary.trust,
+      // Velocidad normalizada para la barra (R1-A): feedback de aceleración/frenada.
+      speed: summary.speed,
+      maxSpeed: SIM.runSpeed,
+      aligning: summary.aligning,
     });
     hud.setPrompt({
       visible: state.interaction.inRange && !hud.isDialogOpen(),

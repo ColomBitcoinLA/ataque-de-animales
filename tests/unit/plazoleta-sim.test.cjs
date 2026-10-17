@@ -48,38 +48,102 @@ test("sim: determinismo — mismo seed e inputs producen el mismo estado", () =>
   );
 });
 
-test("sim: caminar y correr respetan la velocidad declarada (sin patinaje)", () => {
+test("sim: sensación de control — rampas de velocidad, crucero y frenada (R1-A)", () => {
   const walker = makeState();
   walker.player.x = -1.6;
   walker.player.z = 5.6;
-  runTicks(walker, FORWARD_X, 60); // 1 s
-  const walkedDistance = walker.player.distance;
-  assert.ok(Math.abs(walkedDistance - sim.walkSpeed) < 0.12, `caminar: ${walkedDistance}`);
+  // Un solo tick: el arranque NO es instantáneo.
+  runTicks(walker, FORWARD_X, 1);
+  assert.ok(walker.player.speed > 0 && walker.player.speed < sim.walkSpeed * 0.4, `arranque: ${walker.player.speed}`);
+  // A los 0,5 s ya está en velocidad de crucero de caminata.
+  runTicks(walker, FORWARD_X, 30);
+  assert.ok(Math.abs(walker.player.speed - sim.walkSpeed) < 0.05, `crucero: ${walker.player.speed}`);
+  assert.equal(walker.player.locomotion, "walk");
+  // Y a 1 s la distancia recorrida es menor que la de un modelo instantáneo (hay rampa).
+  runTicks(walker, FORWARD_X, 29);
+  assert.ok(walker.player.distance < sim.walkSpeed * 1.0, `distancia con rampa: ${walker.player.distance}`);
+  assert.ok(walker.player.distance > 1.7, `distancia mínima esperada: ${walker.player.distance}`);
 
+  // Frenada: al soltar, se detiene en menos de 0,4 s (decel > accel).
+  const stopProbe = makeState();
+  stopProbe.player.x = -1.6;
+  stopProbe.player.z = 5.6;
+  runTicks(stopProbe, FORWARD_X, 60);
+  let stopTicks = 0;
+  while (stopProbe.player.speed > 0.01 && stopTicks < 120) {
+    runTicks(stopProbe, { moveX: 0, moveZ: 0 }, 1);
+    stopTicks++;
+  }
+  assert.ok(stopTicks < 24, `ticks hasta detenerse: ${stopTicks}`);
+  assert.equal(stopProbe.player.locomotion, "idle");
+  // Pero sigue avanzando algo mientras frena (deslizamiento, no corte seco).
+  assert.ok(stopProbe.player.distance > sim.walkSpeed * 0.9, "debe recorrer algo durante la frenada");
+
+  // Carrera: exige mantener Shift y alcanza el crucero de carrera.
   const runner = makeState();
   runner.player.x = -1.6;
   runner.player.z = 5.6;
-  runTicks(runner, RUN_X, 60);
-  assert.ok(Math.abs(runner.player.distance - sim.runSpeed) < 0.2, `correr: ${runner.player.distance}`);
+  runTicks(runner, RUN_X, 90);
+  assert.ok(Math.abs(runner.player.speed - sim.runSpeed) < 0.35, `crucero de carrera: ${runner.player.speed}`);
   assert.equal(runner.player.locomotion, "run");
+  assert.ok(runner.player.sprint > 0.95, `rampa de sprint: ${runner.player.sprint}`);
 
-  // La fase de locomoción avanza por DISTANCIA: el paso de carrera es más largo,
-  // así que por metro recorrido acumula MENOS fase (base del ciclo de animación).
+  // Sin Shift vuelve al trote.
+  runTicks(runner, FORWARD_X, 90);
+  assert.ok(Math.abs(runner.player.speed - sim.walkSpeed) < 0.05, `vuelta al trote: ${runner.player.speed}`);
+  assert.equal(runner.player.locomotion, "walk");
+});
+
+test("sim: girar 180° penaliza el avance en lugar de deslizar de lado (R1-A)", () => {
+  const state = makeState();
+  state.player.x = -1.6;
+  state.player.z = 5.6;
+  // Encara +X caminando.
+  runTicks(state, FORWARD_X, 60);
+  const headingBefore = state.player.heading;
+  const distanceBefore = state.player.distance;
+  // Ahora pide -X (media vuelta): el avance efectivo cae y la mascota gira.
+  runTicks(state, { moveX: -1, moveZ: 0, run: false }, 12);
+  const turnDistance = state.player.distance - distanceBefore;
+  assert.ok(state.player.align < 0.9, `alineación durante el giro: ${state.player.align}`);
+  assert.ok(turnDistance < 0.35, `no debe avanzar casi nada mientras gira: ${turnDistance}`);
+  const headingDelta = Math.abs(Math.atan2(
+    Math.sin(state.player.heading - headingBefore),
+    Math.cos(state.player.heading - headingBefore)
+  ));
+  assert.ok(headingDelta > 0.4, `debe estar girando: ${headingDelta}`);
+
+  // Tras completar el giro vuelve a avanzar a plena velocidad efectiva.
+  runTicks(state, { moveX: -1, moveZ: 0, run: false }, 90);
+  assert.ok(state.player.align > 0.98, `alineación final: ${state.player.align}`);
+  assert.ok(Math.abs(state.player.locomotionSpeed - state.player.speed) < 1e-6);
+});
+
+test("sim: la fase de animación avanza por distancia (sin patinaje)", () => {
+  // El paso de carrera es más largo: por metro recorrido acumula MENOS fase.
   const walkSample = (() => {
     const s = makeState();
     s.player.x = -1.6; s.player.z = 5.6;
-    runTicks(s, FORWARD_X, 30);
+    runTicks(s, FORWARD_X, 60);
     return { phase: s.player.phase, distance: s.player.distance };
   })();
   const runSample = (() => {
     const s = makeState();
     s.player.x = -1.6; s.player.z = 5.6;
-    runTicks(s, RUN_X, 30);
+    runTicks(s, RUN_X, 60);
     return { phase: s.player.phase, distance: s.player.distance };
   })();
   assert.ok(
     runSample.phase / runSample.distance < walkSample.phase / walkSample.distance,
     "correr con paso más largo debe acumular menos fase por metro"
+  );
+  // Y la relación se acerca a la de los pasos declarados. No es exacta porque la rampa de
+  // sprint hace que los primeros metros de la carrera se cobren con la zancada de caminata.
+  const measuredRatio = runSample.phase / runSample.distance / (walkSample.phase / walkSample.distance);
+  const declaredRatio = sim.strideWalk / sim.strideRun;
+  assert.ok(
+    Math.abs(measuredRatio - declaredRatio) < 0.15,
+    `fase por metro: medido ${measuredRatio.toFixed(3)} vs declarado ${declaredRatio.toFixed(3)}`
   );
 });
 

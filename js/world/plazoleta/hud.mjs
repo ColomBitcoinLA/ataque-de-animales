@@ -19,6 +19,7 @@ export function createHud({ perfEnabled = false } = {}) {
     clock: Q("clock-label"),
     petName: Q("pet-name"),
     petMeta: Q("pet-meta"),
+    speedFill: Q("speed-fill"),
     trustFill: Q("trust-fill"),
     trustValue: Q("trust-value"),
     prompt: Q("prompt"),
@@ -45,6 +46,8 @@ export function createHud({ perfEnabled = false } = {}) {
     petName: "",
     petMeta: "",
     trust: -1,
+    speedRatio: null,
+    aligning: null,
     promptVerb: "",
     promptVisible: null,
   };
@@ -94,7 +97,12 @@ export function createHud({ perfEnabled = false } = {}) {
     }
   }
 
-  function setPet({ name, meta, trust, trustMax = 5 }) {
+  /**
+   * Tarjeta de mascota. `speed`/`maxSpeed` alimentan la barra de velocidad (R1-A):
+   * es evidencia visible de la aceleración y la frenada. Sólo se escribe el DOM si el
+   * valor cambió al menos un 3 % (evita reflows por frame).
+   */
+  function setPet({ name, meta, trust, trustMax = 5, speed = null, maxSpeed = null, aligning = false }) {
     if (cache.petName !== name) {
       cache.petName = name;
       setText(els.petName, name);
@@ -107,6 +115,17 @@ export function createHud({ perfEnabled = false } = {}) {
       cache.trust = trust;
       if (els.trustFill) els.trustFill.style.width = `${Math.round((trust / trustMax) * 100)}%`;
       setText(els.trustValue, `${trust}/${trustMax}`);
+    }
+    if (els.speedFill && Number.isFinite(speed) && Number.isFinite(maxSpeed) && maxSpeed > 0) {
+      const ratio = Math.max(0, Math.min(1, speed / maxSpeed));
+      if (cache.speedRatio === null || Math.abs(ratio - cache.speedRatio) > 0.03) {
+        cache.speedRatio = ratio;
+        els.speedFill.style.width = `${Math.round(ratio * 100)}%`;
+      }
+    }
+    if (els.speedFill && cache.aligning !== aligning) {
+      cache.aligning = aligning;
+      els.speedFill.classList.toggle("aligning", Boolean(aligning));
     }
   }
 

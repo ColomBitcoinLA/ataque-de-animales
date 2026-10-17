@@ -259,12 +259,17 @@ app.get("/plazoleta.html", (_req, res) => {
   res.sendFile(path.join(__dirname, "plazoleta.html"));
 });
 
+// The newest playable world is the default. Keep V0 explicitly accessible for regression/QA.
+app.get("/world-v0.html", (_req, res) => {
+  res.sendFile(path.join(__dirname, "world-v0.html"));
+});
+
 app.get("/world.html", (_req, res) => {
-  res.sendFile(path.join(__dirname, "world.html"));
+  res.redirect(302, "/plazoleta.html");
 });
 
 app.get("/", (_req, res) => {
-  res.redirect("/world.html");
+  res.redirect(302, "/plazoleta.html");
 });
 
 function authMiddleware(req, res, next) {

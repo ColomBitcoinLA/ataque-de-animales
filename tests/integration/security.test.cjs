@@ -53,14 +53,19 @@ test("Security SEC-03: Legitimate public frontend assets ARE accessible", async 
   const jsRes = await fetch(`${server.url}/js/main.js`);
   assert.equal(jsRes.status, 200);
 
-  // World entry point is public; existing classic page remains available.
-  const worldRes = await fetch(`${server.url}/world.html`);
-  assert.equal(worldRes.status, 200);
-  assert.ok((await worldRes.text()).includes("Animal Combat World"));
+  // The current R1-A world is the default. Keep V0 and classic without exposing backend files.
+  const currentWorld = await fetch(`${server.url}/plazoleta.html`);
+  assert.equal(currentWorld.status, 200);
+  assert.ok((await currentWorld.text()).includes("Plazoleta del Río"));
 
-  const rootRes = await fetch(`${server.url}/`, { redirect: "manual" });
-  assert.equal(rootRes.status, 302);
-  assert.equal(rootRes.headers.get("location"), "/world.html");
+  const v0Res = await fetch(`${server.url}/world-v0.html`);
+  assert.equal(v0Res.status, 200);
+
+  for (const route of ["/", "/world.html"]) {
+    const response = await fetch(`${server.url}${route}`, { redirect: "manual" });
+    assert.equal(response.status, 302);
+    assert.equal(response.headers.get("location"), "/plazoleta.html");
+  }
 });
 
 test("Security SEC-12: Standard security headers are present", async (t) => {
