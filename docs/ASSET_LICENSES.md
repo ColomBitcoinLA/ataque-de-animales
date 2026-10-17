@@ -39,6 +39,15 @@ ningún modelo, textura, sprite, tipografía o audio de terceros.
 | Tipografías del HUD | Stack del sistema (`Inter`, `system-ui`, `Segoe UI`, `sans-serif`) | Fuentes del sistema operativo del usuario · no se distribuyen ficheros de fuente |
 | Audio | **No se usa audio en este POC** | — |
 
+### R1-B · concepto, no modelo terminado
+
+| Asset | Autoría / licencia | Estado |
+|---|---|---|
+| `docs/r1b-salamander-orthos.svg` (referencias front/side/back) | Ilustración vectorial original creada para este repositorio · ISC (`package.json`); sin recursos de terceros | **Sólo concepto 2D.** No es un GLB, captura del juego ni prueba de calidad del modelo. Véase `docs/R1B_SALAMANDER_ASSET_BRIEF.md`. |
+
+No se ha añadido ni licenciado ningún modelo 3D para R1-B. Antes de incorporar uno de
+terceros se debe registrar autor, URL de origen, licencia de redistribución y atribución.
+
 ## 3. Referencias culturales (no son assets)
 
 La dirección de arte se inspira en elementos reales de Cali (Colombia): el río Cali, el
