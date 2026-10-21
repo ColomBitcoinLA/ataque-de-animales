@@ -69,6 +69,25 @@ Esta atribución de trabajo original no constituye una certificación jurídica 
 conceptos del moodboard. Antes de incorporar cualquier asset externo se debe registrar
 autor, URL de origen, licencia de redistribución y atribución.
 
+### Licencias: obras de Blender frente a scripts que usan su API
+
+La distinción importa y **queda pendiente de revisión legal antes de publicar fuera del
+repositorio**:
+
+- **Obras producidas** (`.blend`, `.glb`, atlas horneados y renders) son geometría, textura
+  y luz originales de este proyecto; no incorporan código de Blender ni assets de terceros.
+  Se declaran bajo la licencia del repositorio (**ISC**).
+- **Scripts de `tools/blender/`** son código original que se ejecuta *dentro* de Blender e
+  importa `bpy`. Blender se distribuye bajo **GPL-2.0-or-later**, y la relación entre esa
+  licencia y los scripts que usan su API Python es un asunto jurídico discutido (no hay una
+  regla automática que convierta todo script `bpy` en GPL, ni lo contrario). En este
+  repositorio se mantiene **ISC de forma provisional**, no como conclusión legal.
+- No se redistribuye Blender, ni su código, ni binarios GPL; los scripts no se cargan en el
+  runtime del juego y el GLB no contiene código GPL.
+- **Acción pendiente:** antes de una publicación externa o de relicenciar el proyecto,
+  confirmar con revisión legal si los scripts `bpy` deben pasar a `GPL-2.0-or-later` o a
+  otra licencia compatible. Hasta entonces no deben presentarse como licencia definitiva.
+
 ## 3. Referencias culturales (no son assets)
 
 La dirección de arte se inspira en elementos reales de Cali (Colombia): el río Cali, el
