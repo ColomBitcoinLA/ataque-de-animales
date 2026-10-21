@@ -1,0 +1,54 @@
+{
+  "objects": 55,
+  "vertices": 38615,
+  "polygons": 60650,
+  "triangles": 77010,
+  "materials": [
+    "01 Basalto y vientre - atlas original",
+    "04 Parpados - basalto pulido",
+    "05 Boca y pupilas - obsidiana",
+    "06 Iris ambar",
+    "07 Garras - cuerno mineral",
+    "08 Fuego solido - amber",
+    "09 Nucleo fuego - oro",
+    "10 Catchlight"
+  ],
+  "bounds_blender": {
+    "min": [
+      -0.44294995069503784,
+      -0.8539013862609863,
+      -9.194109225063585e-06
+    ],
+    "max": [
+      0.4429868161678314,
+      1.0436021089553833,
+      0.9935545921325684
+    ],
+    "dimensions": [
+      0.8859367668628693,
+      1.8975034952163696,
+      0.9935637862417934
+    ]
+  },
+  "blender": "5.2.2 LTS",
+  "textures": 2,
+  "texture_resolution": [
+    2048,
+    2048
+  ],
+  "rigged": false,
+  "animations": 0,
+  "build_export_seconds": 18.98163189999468,
+  "total_build_render_seconds": 339.60444650000136,
+  "files": {
+    "salamander.blend": 4870725,
+    "salamander-preview.glb": 4646424,
+    "salamander-basecolor.png": 1931733,
+    "salamander-emission.png": 939508,
+    "salamander-back.png": 1338631,
+    "salamander-front.png": 1266148,
+    "salamander-side.png": 1288375,
+    "salamander-three-quarter.png": 1346483,
+    "salamander-wireframe.png": 1440729
+  }
+}

@@ -45,8 +45,29 @@ ningún modelo, textura, sprite, tipografía o audio de terceros.
 |---|---|---|
 | `docs/r1b-salamander-orthos.svg` (referencias front/side/back) | Ilustración vectorial original creada para este repositorio · ISC (`package.json`); sin recursos de terceros | **Sólo concepto 2D.** No es un GLB, captura del juego ni prueba de calidad del modelo. Véase `docs/R1B_SALAMANDER_ASSET_BRIEF.md`. |
 
-No se ha añadido ni licenciado ningún modelo 3D para R1-B. Antes de incorporar uno de
-terceros se debe registrar autor, URL de origen, licencia de redistribución y atribución.
+En la entrega R1-B inicial no se añadió modelo 3D. R1-B.2 y R1-B.2A incorporan producción
+original estática para revisión artística, **sin rig ni animaciones**. La V1 se conserva
+intacta en `assets/characters/salamander/` y respaldada fuera del worktree; la V2 vive en
+`assets/characters/salamander/v2/`.
+
+| Asset / fuente | Autoría / licencia | Proveniencia y alcance |
+|---|---|---|
+| `tools/blender/build_salamander.py`, `validate_salamander.py`, `verify_glb.mjs`, `decode_png.mjs`, `make_review_sheet.py` | Autoría original asistida por IA para Animal Combat World · ISC | Pipeline V1; Blender 5.2.2 LTS, sin generadores de imagen ni modelos descargados. |
+| `assets/characters/salamander/salamander.blend`, `salamander-preview.glb` y atlas V1 | Geometría y materiales originales generados por el script anterior · ISC | V1 conservada para comparación y recuperación. |
+| `tools/blender/build_salamander_v2.py`, `validate_salamander_v2.py`, `verify_glb_v2.mjs`, `render_v1_comparison.py`, `make_comparison.py` | Autoría original · ISC | Pipeline V2: reconstrucción de cabeza, ojos, cresta de hojas de fuego, atlas de fisuras y materiales PBR. |
+| `assets/characters/salamander/v2/salamander-v2.blend` y `salamander-v2-preview.glb` | Geometría y materiales originales · ISC | Modelo estático V2; **no aprobado artísticamente**. |
+| `assets/characters/salamander/v2/salamander-v2-{basecolor,emission,roughness}.png` | Texturas originales horneadas en Blender · ISC | Campo Voronoi 3D perturbado, máscara de fisura y rugosidad derivada; 2048×2048, sin fotografías ni texturas ajenas. |
+| `docs/r1b/v2/*.png` | Renders reales de Blender 5.2.2 · ISC | Evidencia visual; `v1-comparison-*` re-renderiza la V1 original con las cámaras y luces de V2. |
+
+Las cuatro capturas adjuntas por el usuario se consultaron como dirección visual:
+`a61ba607…` (ejemplo lava lizard), `7e987954…` (Embercrest), `bfad6732…` (ficha Salamander)
+y `b32c0bcf…` (moodboard de mascotas). No se verificó autor/licencia de las obras
+representadas; **no se incorporan, redistribuyen, proyectan como texturas ni se extraen
+mallas** de ellas. El modelo desarrolla de forma original rasgos generales solicitados
+(cuadrúpedo volcánico, ojos ámbar, grietas, cresta y llama), no reproduce una malla ajena.
+Esta atribución de trabajo original no constituye una certificación jurídica de los
+conceptos del moodboard. Antes de incorporar cualquier asset externo se debe registrar
+autor, URL de origen, licencia de redistribución y atribución.
 
 ## 3. Referencias culturales (no son assets)
 

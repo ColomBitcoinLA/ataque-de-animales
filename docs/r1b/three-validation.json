@@ -1,0 +1,386 @@
+{
+  "passed": true,
+  "sourceSha256": "633c915744f444325f3964a5de3fcb67f86c2684660a9aa3ffbc22abe9f90cfd",
+  "validatedAt": "2026-10-18T00:45:31.576Z",
+  "threeRevision": "160",
+  "node": "v24.18.0",
+  "source": "assets/characters/salamander/salamander-preview.glb",
+  "bytes": 4646424,
+  "meshPrimitives": 55,
+  "triangles": 77010,
+  "positionVertices": 44415,
+  "colorMeshes": 15,
+  "materials": [
+    "04 Parpados - basalto pulido",
+    "08 Fuego solido - amber",
+    "09 Nucleo fuego - oro",
+    "10 Catchlight",
+    "06 Iris ambar",
+    "07 Garras - cuerno mineral",
+    "05 Boca y pupilas - obsidiana",
+    "01 Basalto y vientre - atlas original"
+  ],
+  "boundsGltf": {
+    "min": [
+      -0.44294995069503784,
+      -0.000009194109225063585,
+      -1.0436021089553833
+    ],
+    "max": [
+      0.4429868161678314,
+      0.9935545921325684,
+      0.8539013862609863
+    ],
+    "size": [
+      0.8859367668628693,
+      0.9935637862417934,
+      1.8975034952163696
+    ]
+  },
+  "animations": 0,
+  "decodedImages": [
+    {
+      "width": 2048,
+      "height": 2048,
+      "rgbaBytes": 16777216
+    },
+    {
+      "width": 2048,
+      "height": 2048,
+      "rgbaBytes": 16777216
+    }
+  ],
+  "note": "GLTFLoader.parseAsync measured in Node, not a browser render, FPS or draw-call measurement.",
+  "details": [
+    {
+      "name": "Brow_L",
+      "vertices": 338,
+      "triangles": 672,
+      "vertexColors": false
+    },
+    {
+      "name": "Brow_R",
+      "vertices": 338,
+      "triangles": 672,
+      "vertexColors": false
+    },
+    {
+      "name": "Cheek_ridge_1",
+      "vertices": 158,
+      "triangles": 312,
+      "vertexColors": false
+    },
+    {
+      "name": "Cheek_ridge_-1",
+      "vertices": 158,
+      "triangles": 312,
+      "vertexColors": false
+    },
+    {
+      "name": "Crest_branch_0_1",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": true
+    },
+    {
+      "name": "Crest_branch_0_-1",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": true
+    },
+    {
+      "name": "Crest_branch_1_1",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": true
+    },
+    {
+      "name": "Crest_branch_1_-1",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": true
+    },
+    {
+      "name": "Crest_branch_2_1",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": true
+    },
+    {
+      "name": "Crest_branch_2_-1",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": true
+    },
+    {
+      "name": "Crest_branch_3_1",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": true
+    },
+    {
+      "name": "Crest_branch_3_-1",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": true
+    },
+    {
+      "name": "Crest_core_0",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": false
+    },
+    {
+      "name": "Crest_core_1",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": false
+    },
+    {
+      "name": "Crest_core_2",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": false
+    },
+    {
+      "name": "Crest_core_3",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": false
+    },
+    {
+      "name": "Crest_main_0",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": true
+    },
+    {
+      "name": "Crest_main_1",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": true
+    },
+    {
+      "name": "Crest_main_2",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": true
+    },
+    {
+      "name": "Crest_main_3",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": true
+    },
+    {
+      "name": "Eye_highlight_L",
+      "vertices": 271,
+      "triangles": 440,
+      "vertexColors": false
+    },
+    {
+      "name": "Eye_highlight_R",
+      "vertices": 271,
+      "triangles": 440,
+      "vertexColors": false
+    },
+    {
+      "name": "Eye_L",
+      "vertices": 1023,
+      "triangles": 1840,
+      "vertexColors": true
+    },
+    {
+      "name": "Eye_R",
+      "vertices": 1023,
+      "triangles": 1840,
+      "vertexColors": true
+    },
+    {
+      "name": "Front_L_claw_0",
+      "vertices": 110,
+      "triangles": 216,
+      "vertexColors": false
+    },
+    {
+      "name": "Front_L_claw_1",
+      "vertices": 110,
+      "triangles": 216,
+      "vertexColors": false
+    },
+    {
+      "name": "Front_L_claw_2",
+      "vertices": 110,
+      "triangles": 216,
+      "vertexColors": false
+    },
+    {
+      "name": "Front_R_claw_0",
+      "vertices": 110,
+      "triangles": 216,
+      "vertexColors": false
+    },
+    {
+      "name": "Front_R_claw_1",
+      "vertices": 110,
+      "triangles": 216,
+      "vertexColors": false
+    },
+    {
+      "name": "Front_R_claw_2",
+      "vertices": 110,
+      "triangles": 216,
+      "vertexColors": false
+    },
+    {
+      "name": "Hind_L_claw_0",
+      "vertices": 110,
+      "triangles": 216,
+      "vertexColors": false
+    },
+    {
+      "name": "Hind_L_claw_1",
+      "vertices": 110,
+      "triangles": 216,
+      "vertexColors": false
+    },
+    {
+      "name": "Hind_L_claw_2",
+      "vertices": 110,
+      "triangles": 216,
+      "vertexColors": false
+    },
+    {
+      "name": "Hind_R_claw_0",
+      "vertices": 110,
+      "triangles": 216,
+      "vertexColors": false
+    },
+    {
+      "name": "Hind_R_claw_1",
+      "vertices": 110,
+      "triangles": 216,
+      "vertexColors": false
+    },
+    {
+      "name": "Hind_R_claw_2",
+      "vertices": 110,
+      "triangles": 216,
+      "vertexColors": false
+    },
+    {
+      "name": "Lower_lid_L",
+      "vertices": 350,
+      "triangles": 696,
+      "vertexColors": false
+    },
+    {
+      "name": "Lower_lid_R",
+      "vertices": 350,
+      "triangles": 696,
+      "vertexColors": false
+    },
+    {
+      "name": "Lower_lip_1",
+      "vertices": 132,
+      "triangles": 260,
+      "vertexColors": false
+    },
+    {
+      "name": "Lower_lip_-1",
+      "vertices": 132,
+      "triangles": 260,
+      "vertexColors": false
+    },
+    {
+      "name": "Mouth_seam_1",
+      "vertices": 138,
+      "triangles": 272,
+      "vertexColors": false
+    },
+    {
+      "name": "Mouth_seam_-1",
+      "vertices": 138,
+      "triangles": 272,
+      "vertexColors": false
+    },
+    {
+      "name": "Nostril_1",
+      "vertices": 423,
+      "triangles": 720,
+      "vertexColors": false
+    },
+    {
+      "name": "Nostril_-1",
+      "vertices": 423,
+      "triangles": 720,
+      "vertexColors": false
+    },
+    {
+      "name": "Pupil_L",
+      "vertices": 691,
+      "triangles": 1216,
+      "vertexColors": false
+    },
+    {
+      "name": "Pupil_R",
+      "vertices": 691,
+      "triangles": 1216,
+      "vertexColors": false
+    },
+    {
+      "name": "Salamander_continuous_sculpt",
+      "vertices": 26503,
+      "triangles": 42570,
+      "vertexColors": false
+    },
+    {
+      "name": "Tail_flame",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": true
+    },
+    {
+      "name": "Tail_flame_core",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": false
+    },
+    {
+      "name": "Tail_ridge_0",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": false
+    },
+    {
+      "name": "Tail_ridge_1",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": false
+    },
+    {
+      "name": "Tail_ridge_2",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": false
+    },
+    {
+      "name": "Tail_ridge_3",
+      "vertices": 402,
+      "triangles": 800,
+      "vertexColors": false
+    },
+    {
+      "name": "Upper_lid_L",
+      "vertices": 350,
+      "triangles": 696,
+      "vertexColors": false
+    },
+    {
+      "name": "Upper_lid_R",
+      "vertices": 350,
+      "triangles": 696,
+      "vertexColors": false
+    }
+  ]
+}
