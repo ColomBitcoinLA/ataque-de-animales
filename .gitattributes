@@ -1,0 +1,7 @@
+# Git LFS: original Salamander art binaries only (V1 + V2). Does not affect other assets.
+assets/characters/salamander/*.blend filter=lfs diff=lfs merge=lfs -text
+assets/characters/salamander/*.glb filter=lfs diff=lfs merge=lfs -text
+assets/characters/salamander/*.png filter=lfs diff=lfs merge=lfs -text
+assets/characters/salamander/**/*.blend filter=lfs diff=lfs merge=lfs -text
+assets/characters/salamander/**/*.glb filter=lfs diff=lfs merge=lfs -text
+assets/characters/salamander/**/*.png filter=lfs diff=lfs merge=lfs -text

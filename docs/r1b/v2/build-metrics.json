@@ -1,0 +1,60 @@
+{
+  "objects": 73,
+  "vertices": 30966,
+  "polygons": 53252,
+  "triangles": 61644,
+  "materials": [
+    "01 Piel volcanica V2",
+    "04 Placas dorsales",
+    "05 Parpados",
+    "06 Boca obsidiana",
+    "07 Iris ambar",
+    "08 Pupila",
+    "09 Brillo",
+    "10 Garras",
+    "11 Fuego - manto",
+    "12 Fuego - nucleo"
+  ],
+  "bounds_blender": {
+    "min": [
+      -0.4005589187145233,
+      -0.838005781173706,
+      -4.479891231312649e-06
+    ],
+    "max": [
+      0.40107306838035583,
+      1.0528850555419922,
+      0.9614167809486389
+    ],
+    "dimensions": [
+      0.8016319870948792,
+      1.8908908367156982,
+      0.9614212608398702
+    ]
+  },
+  "textures": 3,
+  "texture_resolution": [
+    2048,
+    2048
+  ],
+  "rigged": false,
+  "animations": 0,
+  "blender": "5.2.2 LTS",
+  "build_export_seconds": 17.52175729998271,
+  "total_seconds": 446.0442686000024,
+  "files": {
+    "salamander-v2.blend": 5757170,
+    "salamander-v2-preview.glb": 5338812,
+    "salamander-v2-basecolor.png": 2433697,
+    "salamander-v2-emission.png": 616882,
+    "salamander-v2-roughness.png": 805047,
+    "salamander-back.png": 1280467,
+    "salamander-face-closeup.png": 1419186,
+    "salamander-front.png": 1320492,
+    "salamander-rear-gameplay-distance.png": 1138602,
+    "salamander-side.png": 1368100,
+    "salamander-silhouette.png": 1217345,
+    "salamander-three-quarter.png": 1396147,
+    "salamander-wireframe.png": 1376164
+  }
+}
