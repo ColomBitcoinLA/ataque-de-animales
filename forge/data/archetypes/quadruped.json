@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "quadruped",
+  "version": "1.0.0",
+  "family": "quadruped",
+  "status": "DRAFT",
+  "skeleton": {
+    "id": "quadruped-base",
+    "bones": ["root", "pelvis", "spine", "chest", "neck", "head", "tail.01", "tail.02", "tail.03", "front.upper.L", "front.fore.L", "front.paw.L", "front.upper.R", "front.fore.R", "front.paw.R", "hind.thigh.L", "hind.shin.L", "hind.paw.L", "hind.thigh.R", "hind.shin.R", "hind.paw.R"],
+    "compatibleWith": ["quadruped"]
+  },
+  "anchors": ["nose.tip", "head.center", "eye.L", "eye.R", "shoulder.L", "shoulder.R", "hip.L", "hip.R", "wrist.L", "wrist.R", "ankle.L", "ankle.R", "tail.root", "tail.tip"],
+  "measurementRanges": {
+    "heightM": [0.98, 1.02],
+    "shoulderHeightM": [0.52, 0.58],
+    "lengthM": [1.82, 1.92],
+    "bodyWidthM": [0.62, 0.66],
+    "eyeDiameterM": [0.085, 0.1],
+    "eyeGapM": [0.06, 0.08],
+    "tailOffsetM": [0.08, 0.14],
+    "crestMainCount": [4, 5],
+    "toesPerPaw": [4, 4]
+  },
+  "identity": {
+    "requiredTraits": ["silhouette.quadruped", "face.eye.integrated", "crest.family.volcanic", "tail.s-curve", "proportions.height"]
+  },
+  "variantPolicy": {
+    "allowedParams": ["palette.id", "materials.fissure", "crest.tint", "fire.intensity", "pattern.seed"],
+    "immutableTraits": ["silhouette.quadruped", "face.eye.integrated", "crest.family.volcanic", "tail.s-curve", "proportions.height"]
+  },
+  "evolutionPolicy": {
+    "mustPreserve": ["silhouette.quadruped", "face.eye.integrated", "crest.family.volcanic"],
+    "maxStage": 3
+  }
+}

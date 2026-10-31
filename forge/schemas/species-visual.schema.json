@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Animal Forge Species Visual",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "visualId", "speciesId", "archetypeId", "artVersion", "status", "approval", "measurements", "identity", "visualParams", "assets", "provenance"],
+  "properties": {
+    "schemaVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "visualId": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+$" },
+    "speciesId": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "archetypeId": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "artVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+-[a-z]+$" },
+    "status": { "enum": ["DRAFT", "REVIEW", "APPROVED", "REJECTED"] },
+    "approval": {
+      "type": "object",
+      "required": ["artApproved", "approvedBy", "approvedAt", "evidence", "score"],
+      "properties": {
+        "artApproved": { "type": "boolean" },
+        "approvedBy": { "type": ["string", "null"] },
+        "approvedAt": { "type": ["string", "null"] },
+        "evidence": { "type": ["string", "null"] },
+        "score": { "type": ["number", "null"] }
+      }
+    },
+    "measurements": {
+      "type": "object",
+      "required": ["heightM", "shoulderHeightM", "lengthM", "bodyWidthM", "eyeDiameterM", "eyeGapM", "tailOffsetM", "crestMainCount", "toesPerPaw", "feetY", "up", "forward"],
+      "properties": {
+        "heightM": { "type": "number" },
+        "shoulderHeightM": { "type": "number" },
+        "lengthM": { "type": "number" },
+        "bodyWidthM": { "type": "number" },
+        "eyeDiameterM": { "type": "number" },
+        "eyeGapM": { "type": "number" },
+        "tailOffsetM": { "type": "number" },
+        "crestMainCount": { "type": "integer" },
+        "toesPerPaw": { "type": "object" },
+        "feetY": { "type": "number" },
+        "up": { "const": "+Y" },
+        "forward": { "const": "+Z" }
+      }
+    },
+    "measurementsSource": {
+      "type": "object",
+      "properties": { "adapter": { "type": "string" }, "sourceHash": { "type": "string" } }
+    },
+    "identity": {
+      "type": "object",
+      "required": ["immutableTraits"],
+      "properties": { "immutableTraits": { "type": "array", "minItems": 1, "items": { "type": "string" } } }
+    },
+    "visualParams": {
+      "type": "object",
+      "required": ["paletteId", "materialIds", "crestCount"],
+      "properties": {
+        "paletteId": { "type": "string" },
+        "materialIds": { "type": "array", "items": { "type": "string" } },
+        "crestCount": { "type": "integer" }
+      }
+    },
+    "assets": {
+      "type": "object",
+      "required": ["model", "textures"],
+      "properties": {
+        "model": { "type": ["string", "null"] },
+        "textures": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["origin", "license", "sourceFiles"],
+      "properties": {
+        "origin": { "type": "string" },
+        "license": { "type": "string" },
+        "sourceFiles": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

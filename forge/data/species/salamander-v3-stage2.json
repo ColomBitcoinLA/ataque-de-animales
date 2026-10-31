@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0.0",
+  "visualId": "salamander.v3.stage2",
+  "speciesId": "salamander",
+  "archetypeId": "quadruped",
+  "artVersion": "0.1.0-draft",
+  "status": "DRAFT",
+  "approval": {
+    "artApproved": false,
+    "approvedBy": null,
+    "approvedAt": null,
+    "evidence": null,
+    "score": null
+  },
+  "measurements": {
+    "heightM": 1.0,
+    "shoulderHeightM": 0.55,
+    "lengthM": 1.845,
+    "bodyWidthM": 0.64,
+    "eyeDiameterM": 0.09,
+    "eyeGapM": 0.08,
+    "tailOffsetM": 0.12,
+    "crestMainCount": 5,
+    "toesPerPaw": { "front.L": 4, "front.R": 4, "hind.L": 4, "hind.R": 4 },
+    "feetY": 0,
+    "up": "+Y",
+    "forward": "+Z"
+  },
+  "identity": {
+    "immutableTraits": ["silhouette.quadruped", "face.eye.integrated", "crest.family.volcanic", "tail.s-curve", "proportions.height"]
+  },
+  "visualParams": {
+    "paletteId": "magma",
+    "materialIds": ["basalt", "magma", "amberEye"],
+    "crestCount": 5
+  },
+  "assets": {
+    "model": null,
+    "textures": []
+  },
+  "provenance": {
+    "origin": "placeholder-lineage",
+    "license": "ISC",
+    "sourceFiles": [],
+    "notes": "Placeholder de linaje para validar el contrato de evolucion. No es una propuesta artistica."
+  }
+}

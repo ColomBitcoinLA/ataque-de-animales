@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0.0",
+  "assetId": "cali.lamp.poste-01",
+  "category": "streetFurniture",
+  "dimensions": { "x": 0.35, "y": 4.2, "z": 0.35 },
+  "pivot": "base",
+  "collision": { "type": "box", "size": [0.35, 4.2, 0.35] },
+  "materials": ["metal", "glass"],
+  "lods": [
+    { "level": 0, "triangles": 2400 },
+    { "level": 1, "triangles": 900 },
+    { "level": 2, "triangles": 300 }
+  ],
+  "files": { "model": null, "textures": [] },
+  "provenance": { "origin": "original-kit", "license": "ISC" }
+}

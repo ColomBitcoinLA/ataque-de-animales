@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0.0",
+  "assetId": "cali.arbol.tropical-01",
+  "category": "vegetation",
+  "dimensions": { "x": 3.5, "y": 6.0, "z": 3.5 },
+  "pivot": "base",
+  "collision": { "type": "cylinder", "size": [0.4, 6.0, 0.4] },
+  "materials": ["leaf", "wood"],
+  "lods": [
+    { "level": 0, "triangles": 3200 },
+    { "level": 1, "triangles": 1200 },
+    { "level": 2, "triangles": 400 }
+  ],
+  "files": { "model": null, "textures": [] },
+  "provenance": { "origin": "original-kit", "license": "ISC" }
+}

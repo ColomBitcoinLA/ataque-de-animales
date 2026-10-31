@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.0.0",
+  "visualId": "salamander.v3",
+  "speciesId": "salamander",
+  "archetypeId": "quadruped",
+  "artVersion": "0.2.0-draft",
+  "status": "DRAFT",
+  "approval": {
+    "artApproved": false,
+    "approvedBy": null,
+    "approvedAt": null,
+    "evidence": null,
+    "score": null
+  },
+  "measurements": {
+    "heightM": 1,
+    "shoulderHeightM": 0.55,
+    "lengthM": 1.845,
+    "bodyWidthM": 0.64,
+    "eyeDiameterM": 0.09,
+    "eyeGapM": 0.08,
+    "tailOffsetM": 0.12,
+    "crestMainCount": 5,
+    "toesPerPaw": {
+      "front.L": 4,
+      "hind.L": 4,
+      "front.R": 4,
+      "hind.R": 4
+    },
+    "feetY": 0,
+    "up": "+Y",
+    "forward": "+Z"
+  },
+  "measurementsSource": {
+    "adapter": "h3c-salamander",
+    "sourceHash": "0555c9cf93659efb422a0107aad02011186e2b4cade4ad396786d31bd82df2de"
+  },
+  "identity": {
+    "immutableTraits": [
+      "silhouette.quadruped",
+      "face.eye.integrated",
+      "crest.family.volcanic",
+      "tail.s-curve",
+      "proportions.height"
+    ]
+  },
+  "visualParams": {
+    "paletteId": "volcanic",
+    "materialIds": [
+      "basalt",
+      "magma",
+      "amberEye",
+      "belly"
+    ],
+    "crestCount": 5
+  },
+  "assets": {
+    "model": null,
+    "textures": []
+  },
+  "provenance": {
+    "origin": "original-vector-h3c-experimental",
+    "license": "ISC",
+    "sourceFiles": [
+      "forge/fixtures/h3c/MASTER_ANATOMY.json",
+      "forge/fixtures/h3c/MASTER_CREST_MAP.json",
+      "forge/fixtures/h3c/MASTER_MEASUREMENTS.json"
+    ],
+    "notes": "Datos H3-C experimentales, no identidad artistica aprobada. No usar como asset final ni como aprobacion."
+  }
+}

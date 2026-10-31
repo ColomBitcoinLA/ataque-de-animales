@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "animal-combat-core",
+  "version": "0.1.0",
+  "status": "DRAFT",
+  "families": {
+    "quadruped": {
+      "description": "Cuadrupedo compacto; cuatro apoyos, cola y cabeza diferenciada.",
+      "silhouette": "readable_at_6m",
+      "anchors": ["nose.tip", "head.center", "eye.L", "eye.R", "shoulder.L", "shoulder.R", "hip.L", "hip.R", "wrist.L", "wrist.R", "ankle.L", "ankle.R", "tail.root", "tail.tip"]
+    },
+    "avian": {
+      "description": "Bipedo con alas; no comparte esqueleto con cuadrupedos.",
+      "silhouette": "readable_at_10m",
+      "anchors": ["beak.tip", "head.center", "wing.L", "wing.R", "hip.L", "hip.R", "tail.root"]
+    },
+    "reptile": {
+      "description": "Cuerpo bajo y alargado; marcha reptante.",
+      "silhouette": "readable_at_4m",
+      "anchors": ["nose.tip", "head.center", "eye.L", "eye.R", "shoulder.L", "shoulder.R", "hip.L", "hip.R", "tail.root", "tail.tip"]
+    }
+  },
+  "palettes": {
+    "volcanic": { "basalt": "#1A1514", "basaltMid": "#2B1F1B", "fissure": "#FF5A1F", "ember": "#FFB347", "flame": "#FFD36B", "belly": "#3A2418" },
+    "ash": { "basalt": "#2A2A2A", "basaltMid": "#3A3A38", "fissure": "#C96A2B", "ember": "#E8B36A", "flame": "#F5D9A8", "belly": "#5A4A3A" },
+    "magma": { "basalt": "#24100C", "basaltMid": "#3A1710", "fissure": "#FF3B0F", "ember": "#FF8A2A", "flame": "#FFE08A", "belly": "#4A2014" },
+    "aquatic": { "deep": "#123A4A", "mid": "#1E5A6E", "accent": "#46C2D8", "belly": "#A8D8E0" },
+    "stone": { "dark": "#3A3A38", "mid": "#6B665E", "light": "#C9C0AE" }
+  },
+  "materials": {
+    "basalt": { "baseColor": "#1A1514", "roughness": [0.75, 0.9], "metallic": 0, "emissive": false },
+    "magma": { "baseColor": "#FF5A1F", "roughness": [0.35, 0.5], "metallic": 0, "emissive": true },
+    "ash": { "baseColor": "#6E6A63", "roughness": [0.8, 0.95], "metallic": 0, "emissive": false },
+    "amberEye": { "baseColor": "#F0A020", "roughness": [0.15, 0.25], "metallic": 0, "emissive": false },
+    "belly": { "baseColor": "#3A2418", "roughness": [0.78, 0.85], "metallic": 0, "emissive": false },
+    "metal": { "baseColor": "#4A4A4A", "roughness": [0.3, 0.5], "metallic": 1, "emissive": false },
+    "glass": { "baseColor": "#B8D8E8", "roughness": [0.05, 0.2], "metallic": 0, "emissive": false },
+    "concrete": { "baseColor": "#9A948A", "roughness": [0.85, 0.95], "metallic": 0, "emissive": false },
+    "leaf": { "baseColor": "#3E6B3A", "roughness": [0.7, 0.85], "metallic": 0, "emissive": false },
+    "wood": { "baseColor": "#6B4A2A", "roughness": [0.75, 0.9], "metallic": 0, "emissive": false },
+    "rock": { "baseColor": "#5A554C", "roughness": [0.8, 0.95], "metallic": 0, "emissive": false }
+  },
+  "proportions": {
+    "headToBody": [0.3, 0.45],
+    "legToBody": [0.25, 0.4],
+    "tailToBody": [0.3, 0.6],
+    "eyeToHeadWidth": [0.22, 0.25]
+  },
+  "eyes": {
+    "integratedAmber": { "style": "integrated", "iris": "#F0A020", "pupil": "vertical", "sclera": false, "lidCoverage": [0.2, 0.3], "glint": 0.05 },
+    "integratedAsh": { "style": "integrated", "iris": "#E8B36A", "pupil": "vertical", "sclera": false, "lidCoverage": [0.2, 0.3], "glint": 0.05 },
+    "reptileSlit": { "style": "lateral", "iris": "#C9A227", "pupil": "slit", "sclera": false, "lidCoverage": [0.15, 0.25], "glint": 0.04 }
+  },
+  "finishes": ["matte", "satin", "gloss"],
+  "lighting": {
+    "evaluation": { "key": "softbox", "fill": 0.4, "background": "#808080", "bloom": false, "colorTemp": 5600 }
+  },
+  "scales": { "unit": "m", "up": "+Y", "forward": "+Z", "groundY": 0 },
+  "budgets": {
+    "web": { "maxTriangles": 15000, "maxMaterials": 4, "maxTextureSize": 2048, "maxDrawCalls": 8 },
+    "mobile": { "maxTriangles": 6000, "maxMaterials": 3, "maxTextureSize": 1024, "maxDrawCalls": 6 }
+  }
+}
