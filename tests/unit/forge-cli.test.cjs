@@ -3,8 +3,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
+const crypto = require("node:crypto");
 const { spawnSync } = require("node:child_process");
 
 const forge = require("../../forge/index.cjs");
@@ -37,8 +37,8 @@ test("CLI inspect reports 1.845 m and denies publish for DRAFT", () => {
 });
 
 test("CLI build-reference is deterministic across two output directories", () => {
-  const a = fs.mkdtempSync(path.join(os.tmpdir(), "af-build-a-"));
-  const b = fs.mkdtempSync(path.join(os.tmpdir(), "af-build-b-"));
+  const a = path.join(ROOT, "forge/out", `test-a-${crypto.randomUUID()}`);
+  const b = path.join(ROOT, "forge/out", `test-b-${crypto.randomUUID()}`);
   try {
     const first = run(["build-reference", "salamander", "--out", a]);
     const second = run(["build-reference", "salamander", "--out", b]);
@@ -57,6 +57,21 @@ test("CLI build-reference is deterministic across two output directories", () =>
     fs.rmSync(a, { recursive: true, force: true });
     fs.rmSync(b, { recursive: true, force: true });
   }
+});
+
+test("CLI rejects output paths outside forge/out", () => {
+  const escape = path.join(ROOT, "..", `af-escape-${crypto.randomUUID()}`);
+  const result = run(["build-reference", "salamander", "--out", escape]);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /OUTSIDE_AUTHORIZED_DIR/);
+  assert.equal(fs.existsSync(escape), false);
+});
+
+test("resolveAuthorizedDir refuses traversal and accepts a child", () => {
+  const root = path.join(ROOT, "forge/out");
+  assert.throws(() => forge.resolveAuthorizedDir(root, path.join(root, "..", "escaped")), /OUTSIDE_AUTHORIZED_DIR/);
+  const inside = forge.resolveAuthorizedDir(root, path.join(root, "child"));
+  assert.ok(inside.startsWith(root));
 });
 
 test("CLI verify-assets exits 0", () => {

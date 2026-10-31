@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import { runValidation, verifyAssets, FORGE_ROOT } from "./pipeline.mjs";
 import { importH3CSalamander } from "./adapters/h3cSalamander.mjs";
 import { buildBlockout, writeBlockout } from "./blockout.mjs";
 import { canPublish } from "./species-registry.mjs";
+import { resolveAuthorizedDir } from "./core/paths.mjs";
 
 const ROOT = process.cwd();
+const OUT_ROOT = join(FORGE_ROOT, "out");
 const BLENDER_CANDIDATES = [
   process.env.BLENDER_BIN,
   "C:/Program Files/Blender Foundation/Blender 5.2/blender.exe",
@@ -92,13 +92,23 @@ function commandInspect(id) {
   return 0;
 }
 
+function resolveOut(args) {
+  try {
+    return resolveAuthorizedDir(OUT_ROOT, args.out || join(OUT_ROOT, "salamander"));
+  } catch (error) {
+    console.error(`BLOCKED: ${error.message}`);
+    return null;
+  }
+}
+
 function commandBuild(args) {
   const id = args._[1] || "salamander";
   if (!["salamander", "salamander.v3"].includes(id)) {
     console.error(`build-reference only supports salamander in AF-0 (got ${id})`);
     return 2;
   }
-  const outDir = args.out || join(FORGE_ROOT, "out/salamander");
+  const outDir = resolveOut(args);
+  if (!outDir) return 2;
   const built = buildSalamander(outDir);
   if (built.code !== 0) return built.code;
   console.log(JSON.stringify({
@@ -119,7 +129,8 @@ function commandRender(args) {
     console.error(`render-preview only supports salamander in AF-0 (got ${id})`);
     return 2;
   }
-  const outDir = args.out || join(FORGE_ROOT, "out/salamander");
+  const outDir = resolveOut(args);
+  if (!outDir) return 2;
   const built = buildSalamander(outDir);
   if (built.code !== 0) return built.code;
   const blender = findBlender();

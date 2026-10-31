@@ -1,92 +1,101 @@
-# AF-0 — Informe de QA y estado de entrega
+# AF-0 — Informe de QA, seguridad y entrega
 
-**Estado:** `AF-0 READY FOR ENGINEERING REVIEW`
+**Estado:** `AF-0 READY FOR REVIEW` (Draft PR)
 **Rama:** `feat/af-0-animal-forge-core` · **Worktree:** `ataque-de-animales-af` · **Base:** `7279aa4`
-**Fecha:** 2026-10-30 · **Node:** 24.18.0 · **pnpm:** 12.3.4 · **Blender:** 5.2
+**Node/pnpm:** 24.18.0 / 12.3.4 · **Blender:** 5.2
 
 ## 1. Aislamiento
 
 | Comprobación | Resultado |
 |---|---|
-| Worktree separado del arte H3-C | OK (`ataque-de-animales-af`) |
-| Rama nueva desde base M1/M2 verificada | OK (`feat/af-0-animal-forge-core` ← `7279aa4`) |
-| H3-C, V1/V2 y `clay-*.png` intactos | OK, no se tocaron |
+| Worktree separado del arte H3-C | OK |
+| Rama nueva desde base M1/M2 | OK (`7279aa4`) |
+| H3-C, V1/V2, `clay-*.png` | Intactos |
 | Dominio, simulación, runtime, combate | Sin cambios |
-| Push / merge / PR | No realizados |
+| Push / merge | Push normal de la rama; **sin merge**; Draft PR |
 
-## 2. Línea base (antes de AF)
+## 2. Dependencias
+
+| Antes | Después | Motivo |
+|---|---|---|
+| `express@5.2.1` | `express@5.3.0` | Actualización mínima dentro de `^5.2.1` |
+| `body-parser@2.2.2` | `body-parser@2.4.0` | Corrige `GHSA-27r3-jxmh-p828` (high) |
+| `qs@6.15.1` | `qs@6.17.1` | Corrige advisories de `qs` (DoS) |
+
+- Actualización por resolución normal de pnpm (`pnpm up express`); sin overrides.
+- `pnpm-lock.yaml` regenerado por pnpm, no editado a mano.
+- `pnpm install --frozen-lockfile`: OK.
+- `pnpm audit --audit-level low`: **0 vulnerabilidades**.
+- Árbol instalado: solo `body-parser@2.4.0` y `qs@6.17.1`; paquetes huérfanos purgados con `pnpm prune`.
+
+## 3. Resultados
 
 | Gate | Resultado |
 |---|---|
-| `pnpm test` | **124/124 pass** |
-| `pnpm check` | **42 archivos Node + 5 browser ESM OK** |
-| `pnpm gate:m0` | **FALLA** en el check 12 (auditoría de dependencias) |
+| `pnpm test` | **153/153 pass** (124 base + 29 AF) |
+| `pnpm check` | **66 Node/CJS/MJS + 5 browser ESM OK** |
+| `pnpm gate:m0` | **13/13 checks OK** |
+| `pnpm audit --audit-level low` | **0 vulnerabilidades** |
+| `node forge/cli.mjs validate` | OK — 1 arquetipo, 2 especies, 2 variantes, 1 evolución, 4 assets |
+| `inspect salamander.v3` | 1.845 m; `publishable=false`; `adapter.discrepancies=0` |
+| `build-reference` | `blockoutHash cbc2f0c6…`, determinista |
+| `render-preview` | Blender 5.2 generó PNG/BLEND/GLB |
+| `verify-assets` | OK, 6 assets |
+| Path traversal (`--out` fuera de `forge/out`) | **Bloqueado**, exit 2, sin archivo creado |
 
-El fallo de M0 es **preexistente** y no lo introduce AF-0: `body-parser` (vía `express`) tiene una vulnerabilidad *high* (`GHSA-27r3-jxmh-p828`); el audit reporta 6 vulnerabilidades (1 high, 4 moderate, 1 low). No se actualizó ninguna dependencia porque el alcance prohíbe cambios innecesarios y la actualización debe evaluarse aparte.
+## 4. Pruebas de seguridad añadidas
 
-## 3. Resultados después de AF-0
+- **Dependencia:** `body-parser` ≥2.4.0 (falla si vuelve a una versión vulnerable).
+- **Cuerpo comprimido:** gzip válido llega a la ruta (401); gzip con bytes extra se maneja en <3 s y el servidor sigue sano.
+- **Path traversal:** `resolveAuthorizedDir` rechaza `..` y symlinks; CLI no escribe fuera de `forge/out`.
+- **Manifiesto aprobado:** `APPROVED` exige entrada en `approval-lock.json`; cambiar el manifiesto sin actualizar el lock produce `APPROVAL_LOCK_MISMATCH`.
+- **Hash independiente de ruta:** copiar los fixtures a otro directorio produce el mismo `sourceHash`.
+- **DRAFT no publicable:** todas las medidas correctas + `DRAFT` → `publishable=false`.
+- **Aprobación sin evidencia:** `APPROVED` sin aprobador/fecha/evidencia → error.
+- **Variante inmutable:** override de `face.eye.integrated` → rechazo.
+- **Evolución cíclica:** A→B→A → `EVOLUTION_CYCLE`.
 
-| Gate | Resultado |
+## 5. Auditoría de código AF
+
+| Área | Resultado |
 |---|---|
-| `pnpm test` | **147/147 pass** (124 existentes + 23 nuevas) |
-| `pnpm check` | **64 Node/CJS/MJS + 5 browser ESM OK** |
-| `node forge/cli.mjs validate` | **OK** — 1 arquetipo, 2 especies, 2 variantes, 1 evolución, 4 assets de mundo |
-| `node forge/cli.mjs inspect salamander.v3` | OK — longitud **1.845 m**, `publishable=false`, `adapter.discrepancies=0` |
-| `node forge/cli.mjs build-reference salamander` | OK — `blockoutHash cbc2f0c6800f3c363346c9306df95870050e3f4f8889219552e6b41fbeb70276` |
-| `node forge/cli.mjs verify-assets` | OK — 6 assets comprobados |
-| `node forge/cli.mjs render-preview salamander` | OK — Blender 5.2 generó `studio-preview.png`, `.blend` y `.glb` |
+| Art Bible/esquemas | Validados con un validador propio, sin dependencias |
+| Arquetipo cuadrúpedo | Rangos coherentes; identidad y política de variantes |
+| Species Registry | Enlace por `speciesId`; sin Three.js; medidas y procedencia |
+| Variantes/evoluciones | Overrides permitidos, rasgos preservados, DAG |
+| World Registry | Categorías, LOD, colisión, materiales, licencia |
+| CLI | Exit codes 0/1/2/3; salida restringida a `forge/out` |
+| Adaptador H3-C | Recalcula 1.845 m; detecta 1.865 como drift |
+| Hashes | Canónicos, sin ruta local; manifiesto con SHA-256 |
+| Determinismo | Dos builds → mismo `blockoutHash` |
+| Blender | Exporta `.blend`, `.glb` y render técnico |
+| Secretos/rutas | Sin secretos ni rutas absolutas en entregables |
+| CI | Fixtures H3-C **rastreados** en `forge/fixtures/`; el pipeline no depende de archivos no rastreados |
 
-## 4. Pruebas nuevas (23)
+## 6. Limitaciones
 
-- Esquema: requeridos, enum, patrón, `additionalProperties`.
-- IDs estables válidos/inválidos.
-- Hash determinista e independiente del orden de claves.
-- Art Bible y arquetipo cuadrúpedo; medidas válidas y fuera de rango.
-- Pipeline global verde con conteos esperados.
-- Contratos de dominio intactos (`SpeciesDefinition`, `CreatureIndividual`, registro).
-- **Negativa de publicación:** especie `DRAFT` con todas las medidas correctas → `publishable=false`.
-- **Aprobación falsificada:** `APPROVED` sin aprobador/evidencia → error de validación.
-- Variante cosmética aceptada; override de rasgo inmutable rechazado; variante sin rasgos preservados rechazada.
-- Evolución cíclica rechazada; evolución que pierde un rasgo identitario rechazada.
-- Asset de mundo con material inexistente y LOD no decreciente rechazado.
-- **Deriva 1.865 vs 1.845:** el adaptador reporta `SNAPSHOT_DRIFT` y recalcula 1.845.
-- Hash del adaptador estable y coincidente con el snapshot.
-- CLI: `validate --json` (exit 0), `inspect` (1.845, no publicable), `build-reference` determinista entre dos directorios, `verify-assets` (exit 0), comandos inválidos (exit 2).
-- Blockout: OBJ determinista, IDs (`head`, `flame.1`), sin NaN, hash estable.
+- `salamander.v3` sigue `DRAFT` y sin modelo publicable; no hay aprobación artística.
+- Solo cuadrípedo; sin rig, UV, animación ni modelo final.
+- El approval lock protege contra cambios silenciosos, pero no es una firma criptográfica: un cambio coordinado de manifiesto y lock sigue siendo posible y requiere revisión.
+- El blockout es una verificación de primitivas, no arte final.
+- La CI remota se evalúa tras el push; no se afirma aprobada antes de ejecutarse.
 
-## 5. Evidencia del blockout
-
-- `forge/examples/salamander/blockout.json` — 13.326 B.
-- `forge/examples/salamander/blockout-report.md`.
-- `forge/examples/salamander/studio-preview.png` — 1024², render Workbench técnico.
-- El blockout es una **verificación geométrica**, no un personaje final ni un asset aprobado.
-
-## 6. Hallazgos y límites
-
-1. **M0 sigue fallando** por la auditoría de dependencias, no por AF-0. Es el único gate no verde.
-2. **Salamander v3 no está aprobado**: `status=DRAFT`, `artApproved=false`, `model=null`. El framework lo impide publicar.
-3. **Sin modelo 3D final, rig, UV ni animación.** El blockout usa primitivas.
-4. **Solo cuadrúpedo**: aves y reptiles tienen contrato, sin datos.
-5. **Arte**: el blockout no sustituye la dirección artística; la ficha H3-C no se modifica.
-6. **Dependencias**: no se añadieron paquetes; todo usa Node built-ins.
-7. **H3-C como fixture**: se copiaron únicamente los tres JSON, con hashes y procedencia; no imágenes.
-
-## 7. Archivos principales
+## 7. Archivos del hardening
 
 ```
-forge/ (núcleo, datos, esquemas, CLI, adaptador, blockout, Blender)
-forge/fixtures/h3c/ (3 JSON + PROVENANCE.md)
-forge/examples/salamander/ (blockout JSON, informe, render)
-tests/unit/forge-core.test.cjs
-tests/unit/forge-registry.test.cjs
-tests/unit/forge-cli.test.cjs
-docs/ANIMAL_FORGE_AF0.md
-docs/AF0_QA_REPORT.md
-package.json (scripts forge:*)
-scripts/check-syntax.cjs (incluye forge)
-.gitignore (forge/out/)
+package.json / pnpm-lock.yaml        express 5.3.0, body-parser 2.4.0, qs 6.17.1
+forge/core/paths.mjs                 resolución segura de directorios
+forge/cli.mjs                        salida restringida a forge/out
+forge/species-registry.mjs           approval lock + hash de manifiesto
+forge/pipeline.mjs                   validación del lock
+forge/data/approval-lock.json        manifiestos aprobados (vacío hoy)
+tests/integration/body-parser-compressed.test.cjs
+tests/unit/forge-core.test.cjs       lock y no-publicación
+tests/unit/forge-cli.test.cjs        traversal y salida autorizada
+tests/unit/forge-registry.test.cjs   hash independiente de ruta
+docs/AF0_SECURITY_REVIEW.md
 ```
 
 ## 8. Conclusión
 
-**AF-0 READY FOR ENGINEERING REVIEW.** Código ejecutable, contratos, CLI, caso Salamander, pruebas y aislamiento confirmados. Sin aprobación artística inventada, sin push, sin merge y sin cambios en el juego.
+Los gates locales están verdes, la vulnerabilidad high está corregida y el camino de publicación está restringido. Queda pendiente la ejecución de CI remoto sobre el commit final.

@@ -3,6 +3,7 @@ export * from "./core/ids.mjs";
 export * from "./core/hash.mjs";
 export * from "./core/fsutil.mjs";
 export * from "./core/result.mjs";
+export * from "./core/paths.mjs";
 export * from "./art-bible.mjs";
 export * from "./archetypes.mjs";
 export * from "./species-registry.mjs";

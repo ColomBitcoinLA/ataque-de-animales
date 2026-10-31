@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { validateSchema } from "./core/schema.mjs";
 import { listJsonFiles } from "./core/fsutil.mjs";
 import { idErrors } from "./core/ids.mjs";
+import { hashObject } from "./core/hash.mjs";
 import { checkMeasurements } from "./archetypes.mjs";
 
 const SCHEMA_URL = new URL("./schemas/species-visual.schema.json", import.meta.url);
@@ -86,6 +87,26 @@ export function validateSpeciesVisual(species, { archetypes, artBible, domainSpe
         add("species.assets.textures", `missing texture ${texture}`, "SPECIES_TEXTURE_MISSING");
       }
     }
+  }
+  return errors;
+}
+
+export function speciesManifestHash(species) {
+  const { __file, ...manifest } = species;
+  return hashObject(manifest);
+}
+
+export function validateApprovalLock(species, lock) {
+  const errors = [];
+  const entry = lock?.approved?.[species.visualId];
+  if (species.status === "APPROVED") {
+    if (!entry) {
+      errors.push({ code: "APPROVAL_LOCK_MISSING", path: `approvalLock.${species.visualId}`, message: "approved species must be pinned in the approval lock" });
+    } else if (entry.manifestHash !== speciesManifestHash(species)) {
+      errors.push({ code: "APPROVAL_LOCK_MISMATCH", path: `approvalLock.${species.visualId}`, message: "approved manifest changed without an explicit lock update" });
+    }
+  } else if (entry) {
+    errors.push({ code: "APPROVAL_LOCK_STALE", path: `approvalLock.${species.visualId}`, message: "lock entry exists for a species that is not APPROVED" });
   }
   return errors;
 }

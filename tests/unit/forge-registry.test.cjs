@@ -150,3 +150,18 @@ test("adapter: source hash is deterministic and matches the species snapshot", (
   assert.equal(species.measurementsSource.sourceHash, a.sourceHash);
   assert.equal(species.measurements.lengthM, a.measurements.lengthM);
 });
+
+test("adapter: source hash does not depend on the local path", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "af-h3c-path-"));
+  try {
+    for (const file of ["MASTER_ANATOMY.json", "MASTER_CREST_MAP.json", "MASTER_MEASUREMENTS.json"]) {
+      fs.copyFileSync(path.join(ROOT, "forge/fixtures/h3c", file), path.join(temp, file));
+    }
+    const original = forge.importH3CSalamander();
+    const copied = forge.importH3CSalamander({ dir: temp });
+    assert.equal(copied.sourceHash, original.sourceHash);
+    assert.deepEqual(copied.measurements, original.measurements);
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});

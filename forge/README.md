@@ -57,9 +57,16 @@ forge/
 5. Ejecuta `pnpm forge:validate`; corrige hasta que quede verde.
 6. La aprobación artística se registra a mano; el framework no la inventa.
 
+## Seguridad
+
+- La CLI sólo escribe bajo `forge/out/`; rechaza rutas absolutas, `..` y symlinks que salgan del directorio autorizado (exit 2).
+- Los manifiestos `APPROVED` se anclan por hash en `forge/data/approval-lock.json`; cualquier cambio exige actualizar el lock de forma explícita.
+- `body-parser` está fijado a `>=2.4.0` (vía `express@5.3.0`); el gate M0 lo verifica.
+- No se guardan secretos ni credenciales en los datos ni en los ejemplos.
+
 ## Limitaciones AF-0
 
 - Solo el arquetipo cuadrúpedo está implementado; aves y reptiles tienen contrato pero no datos.
 - El blockout usa primitivas; no sustituye escultura/retopología.
 - La apariencia material no se evalúa con PBR; el render es Workbench técnico.
-- El gate M0 de auditoría de dependencias falla por una vulnerabilidad preexistente de `body-parser` (express); no se actualizó ninguna dependencia en AF-0.
+- El approval lock no es una firma criptográfica: un cambio coordinado de manifiesto y lock requiere revisión humana.

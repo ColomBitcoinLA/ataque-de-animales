@@ -129,3 +129,25 @@ test("publish gate: APPROVED without human evidence is rejected by validation", 
   const publish = forge.canPublish(forged, { ok: true, errors: [] }, { root: ROOT });
   assert.equal(publish.allowed, false);
 });
+
+test("approval lock: approved manifests cannot change silently", () => {
+  const result = forge.runValidation({ root: ROOT });
+  const species = result.data.species.get("salamander.v3");
+  const approved = {
+    ...species,
+    status: "APPROVED",
+    approval: { artApproved: true, approvedBy: "human", approvedAt: "2026-10-30", evidence: "review", score: 7 },
+  };
+  const hash = forge.speciesManifestHash(approved);
+
+  assert.ok(forge.validateApprovalLock(approved, { approved: {} }).some((e) => e.code === "APPROVAL_LOCK_MISSING"));
+  assert.ok(forge.validateApprovalLock(approved, { approved: { [approved.visualId]: { manifestHash: "x" } } })
+    .some((e) => e.code === "APPROVAL_LOCK_MISMATCH"));
+  assert.deepEqual(forge.validateApprovalLock(approved, { approved: { [approved.visualId]: { manifestHash: hash } } }), []);
+  assert.ok(forge.validateApprovalLock(species, { approved: { [species.visualId]: { manifestHash: hash } } })
+    .some((e) => e.code === "APPROVAL_LOCK_STALE"));
+
+  const tampered = { ...approved, visualParams: { ...approved.visualParams, crestCount: 4 } };
+  assert.ok(forge.validateApprovalLock(tampered, { approved: { [approved.visualId]: { manifestHash: hash } } })
+    .some((e) => e.code === "APPROVAL_LOCK_MISMATCH"));
+});

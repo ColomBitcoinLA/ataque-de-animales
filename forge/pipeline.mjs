@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadArtBible } from "./art-bible.mjs";
 import { loadArchetypes, validateArchetype } from "./archetypes.mjs";
-import { loadSpeciesVisuals, validateSpeciesVisual } from "./species-registry.mjs";
+import { loadSpeciesVisuals, validateSpeciesVisual, validateApprovalLock } from "./species-registry.mjs";
 import { loadVariants, validateVariant } from "./variants.mjs";
 import { loadEvolutions, validateEvolutions } from "./evolutions.mjs";
 import { loadWorldAssets, validateWorldAsset, verifyAssetFiles } from "./world-registry.mjs";
@@ -54,6 +54,14 @@ export function runValidation({ root = process.cwd(), forgeRoot = FORGE_ROOT } =
   for (const species of speciesList) {
     errors.push(...validateSpeciesVisual(species, { archetypes: archetypeMap, artBible, domainSpeciesIds, root }));
   }
+
+  let approvalLock = { approved: {} };
+  try {
+    approvalLock = JSON.parse(readFileSync(join(forgeRoot, "data/approval-lock.json"), "utf8"));
+  } catch {
+    errors.push({ code: "APPROVAL_LOCK_MISSING", path: "forge/data/approval-lock.json", message: "approval lock is missing or invalid" });
+  }
+  for (const species of speciesList) errors.push(...validateApprovalLock(species, approvalLock));
 
   const variantsById = new Map(variantList.map((v) => [v.variantId, v]));
   for (const variant of variantList) {

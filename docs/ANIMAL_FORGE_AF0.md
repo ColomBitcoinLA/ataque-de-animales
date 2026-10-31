@@ -106,6 +106,8 @@ El caso 1.865 vs 1.845 queda cubierto por un test: al alterar el snapshot a 1.86
 
 Un blockout con todas las medidas en rango pero `DRAFT` devuelve `publishable=false`. Un `APPROVED` sin evidencia es rechazado por el validador. **Ningún test numérico sustituye la revisión humana.**
 
+Además, los manifiestos `APPROVED` se anclan por hash en `forge/data/approval-lock.json` (`validateApprovalLock`): editar medidas, rasgos o parámetros sin actualizar el lock produce `APPROVAL_LOCK_MISMATCH`. El lock no es una firma criptográfica; su cambio sigue requiriendo revisión.
+
 ## 6. CLI y flujo
 
 ```bash
@@ -117,6 +119,8 @@ pnpm forge:verify
 ```
 
 Salidas: `forge/out/salamander/{blockout.json,blockout.obj,blockout-report.md,studio-preview.png,blockout.blend,blockout.glb}`.
+
+La CLI restringe `--out` a `forge/out/`: `resolveAuthorizedDir` rechaza rutas absolutas, `..` y symlinks que apunten fuera (exit 2).
 
 El blockout es determinista: dos builds producen el mismo `blockoutHash` (`cbc2f0c6...` con los fixtures actuales). El OBJ incluye IDs (`head`, `eye.L`, `tail`, `flame.1`…), sin NaN.
 
@@ -132,5 +136,5 @@ El blockout es determinista: dos builds producen el mismo `blockoutHash` (`cbc2f
 - Solo cuadrúpedo implementado; aves/reptiles tienen contrato sin datos.
 - Sin rig, animación, UV, retopología ni modelo final.
 - Sin editor de mundos; solo registro y validación.
-- El gate M0 de auditoría falla por `body-parser` (express) preexistente; no se tocaron dependencias.
+- `express@5.3.0` → `body-parser@2.4.0` corrige la vulnerabilidad alta; `pnpm audit --audit-level low` queda en 0.
 - Próximo paso lógico (AF-1): arquetipos aviar/reptil, LOD/colisión automáticos y comparación visual de siluetas.
