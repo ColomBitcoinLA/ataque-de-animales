@@ -5,3 +5,6 @@ node_modules/
 # Runtime persistence artifacts
 data/database.json
 data/*.tmp
+
+# Animal Forge generated outputs (reproducible, not committed)
+forge/out/

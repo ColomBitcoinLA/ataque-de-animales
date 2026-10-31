@@ -1,0 +1,876 @@
+{
+  "schemaVersion": "1.0.0",
+  "blockoutId": "salamander.v3.blockout",
+  "speciesVisualId": "salamander.v3",
+  "kind": "TECHNICAL_BLOCKOUT",
+  "units": "m",
+  "orientation": {
+    "up": "+Y",
+    "forward": "+Z",
+    "groundY": 0
+  },
+  "sourceHash": "0555c9cf93659efb422a0107aad02011186e2b4cade4ad396786d31bd82df2de",
+  "measurements": {
+    "heightM": 1,
+    "shoulderHeightM": 0.55,
+    "lengthM": 1.845,
+    "bodyWidthM": 0.64,
+    "eyeDiameterM": 0.09,
+    "eyeGapM": 0.08,
+    "tailOffsetM": 0.12,
+    "crestMainCount": 5,
+    "toesPerPaw": {
+      "front.L": 4,
+      "hind.L": 4,
+      "front.R": 4,
+      "hind.R": 4
+    },
+    "feetY": 0,
+    "up": "+Y",
+    "forward": "+Z"
+  },
+  "primitives": [
+    {
+      "id": "torso",
+      "type": "ellipsoid",
+      "center": [
+        0,
+        0.36,
+        0
+      ],
+      "radii": [
+        0.32,
+        0.19,
+        0.52
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "chest",
+      "type": "ellipsoid",
+      "center": [
+        0,
+        0.42,
+        0.34
+      ],
+      "radii": [
+        0.28,
+        0.17,
+        0.22
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "hips",
+      "type": "ellipsoid",
+      "center": [
+        0,
+        0.38,
+        -0.3
+      ],
+      "radii": [
+        0.29,
+        0.18,
+        0.26
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "belly",
+      "type": "ellipsoid",
+      "center": [
+        0,
+        0.26,
+        0.04
+      ],
+      "radii": [
+        0.24,
+        0.08,
+        0.4
+      ],
+      "color": "#3A2418"
+    },
+    {
+      "id": "neck",
+      "type": "ellipsoid",
+      "center": [
+        0,
+        0.49,
+        0.44
+      ],
+      "radii": [
+        0.15,
+        0.12,
+        0.15
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "head",
+      "type": "ellipsoid",
+      "center": [
+        0,
+        0.61,
+        0.56
+      ],
+      "radii": [
+        0.205,
+        0.15,
+        0.235
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "skull.back",
+      "type": "ellipsoid",
+      "center": [
+        0,
+        0.615,
+        0.47
+      ],
+      "radii": [
+        0.19,
+        0.135,
+        0.09
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "snout.bridge",
+      "type": "ellipsoid",
+      "center": [
+        0,
+        0.6,
+        0.695
+      ],
+      "radii": [
+        0.075,
+        0.05,
+        0.105
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "muzzle",
+      "type": "ellipsoid",
+      "center": [
+        0,
+        0.54,
+        0.755
+      ],
+      "radii": [
+        0.1,
+        0.07,
+        0.09
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "jaw",
+      "type": "ellipsoid",
+      "center": [
+        0,
+        0.5,
+        0.725
+      ],
+      "radii": [
+        0.085,
+        0.04,
+        0.075
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "chin",
+      "type": "ellipsoid",
+      "center": [
+        0,
+        0.472,
+        0.755
+      ],
+      "radii": [
+        0.07,
+        0.03,
+        0.06
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "cheek.L",
+      "type": "ellipsoid",
+      "center": [
+        0.155,
+        0.56,
+        0.62
+      ],
+      "radii": [
+        0.055,
+        0.05,
+        0.065
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "brow.L",
+      "type": "ellipsoid",
+      "center": [
+        0.09,
+        0.665,
+        0.755
+      ],
+      "radii": [
+        0.055,
+        0.025,
+        0.05
+      ],
+      "color": "#1A1514"
+    },
+    {
+      "id": "shoulder.L",
+      "type": "ellipsoid",
+      "center": [
+        0.22,
+        0.45,
+        0.26
+      ],
+      "radii": [
+        0.09,
+        0.095,
+        0.1
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "haunch.L",
+      "type": "ellipsoid",
+      "center": [
+        0.2,
+        0.45,
+        -0.28
+      ],
+      "radii": [
+        0.085,
+        0.095,
+        0.1
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "paw.front.L",
+      "type": "ellipsoid",
+      "center": [
+        0.34,
+        0.035,
+        0.34
+      ],
+      "radii": [
+        0.07,
+        0.035,
+        0.095
+      ],
+      "color": "#3A2A22"
+    },
+    {
+      "id": "paw.hind.L",
+      "type": "ellipsoid",
+      "center": [
+        0.32,
+        0.035,
+        -0.42
+      ],
+      "radii": [
+        0.07,
+        0.035,
+        0.095
+      ],
+      "color": "#3A2A22"
+    },
+    {
+      "id": "cheek.R",
+      "type": "ellipsoid",
+      "center": [
+        -0.155,
+        0.56,
+        0.62
+      ],
+      "radii": [
+        0.055,
+        0.05,
+        0.065
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "brow.R",
+      "type": "ellipsoid",
+      "center": [
+        -0.09,
+        0.665,
+        0.755
+      ],
+      "radii": [
+        0.055,
+        0.025,
+        0.05
+      ],
+      "color": "#1A1514"
+    },
+    {
+      "id": "shoulder.R",
+      "type": "ellipsoid",
+      "center": [
+        -0.22,
+        0.45,
+        0.26
+      ],
+      "radii": [
+        0.09,
+        0.095,
+        0.1
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "haunch.R",
+      "type": "ellipsoid",
+      "center": [
+        -0.2,
+        0.45,
+        -0.28
+      ],
+      "radii": [
+        0.085,
+        0.095,
+        0.1
+      ],
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "paw.front.R",
+      "type": "ellipsoid",
+      "center": [
+        -0.34,
+        0.035,
+        0.34
+      ],
+      "radii": [
+        0.07,
+        0.035,
+        0.095
+      ],
+      "color": "#3A2A22"
+    },
+    {
+      "id": "paw.hind.R",
+      "type": "ellipsoid",
+      "center": [
+        -0.32,
+        0.035,
+        -0.42
+      ],
+      "radii": [
+        0.07,
+        0.035,
+        0.095
+      ],
+      "color": "#3A2A22"
+    }
+  ],
+  "segments": [
+    {
+      "id": "upper.front.L",
+      "type": "capsule",
+      "from": [
+        0.22,
+        0.45,
+        0.26
+      ],
+      "to": [
+        0.31,
+        0.3,
+        0.24
+      ],
+      "r1": 0.07,
+      "r2": 0.058,
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "fore.front.L",
+      "type": "capsule",
+      "from": [
+        0.31,
+        0.3,
+        0.24
+      ],
+      "to": [
+        0.33,
+        0.1,
+        0.3
+      ],
+      "r1": 0.052,
+      "r2": 0.045,
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "pastern.front.L",
+      "type": "capsule",
+      "from": [
+        0.33,
+        0.1,
+        0.3
+      ],
+      "to": [
+        0.34,
+        0.035,
+        0.34
+      ],
+      "r1": 0.045,
+      "r2": 0.042,
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "thigh.L",
+      "type": "capsule",
+      "from": [
+        0.2,
+        0.45,
+        -0.28
+      ],
+      "to": [
+        0.3,
+        0.29,
+        -0.22
+      ],
+      "r1": 0.08,
+      "r2": 0.065,
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "shin.L",
+      "type": "capsule",
+      "from": [
+        0.3,
+        0.29,
+        -0.22
+      ],
+      "to": [
+        0.31,
+        0.1,
+        -0.36
+      ],
+      "r1": 0.058,
+      "r2": 0.048,
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "metatarsus.L",
+      "type": "capsule",
+      "from": [
+        0.31,
+        0.1,
+        -0.36
+      ],
+      "to": [
+        0.32,
+        0.035,
+        -0.42
+      ],
+      "r1": 0.048,
+      "r2": 0.042,
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "upper.front.R",
+      "type": "capsule",
+      "from": [
+        -0.22,
+        0.45,
+        0.26
+      ],
+      "to": [
+        -0.31,
+        0.3,
+        0.24
+      ],
+      "r1": 0.07,
+      "r2": 0.058,
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "fore.front.R",
+      "type": "capsule",
+      "from": [
+        -0.31,
+        0.3,
+        0.24
+      ],
+      "to": [
+        -0.33,
+        0.1,
+        0.3
+      ],
+      "r1": 0.052,
+      "r2": 0.045,
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "pastern.front.R",
+      "type": "capsule",
+      "from": [
+        -0.33,
+        0.1,
+        0.3
+      ],
+      "to": [
+        -0.34,
+        0.035,
+        0.34
+      ],
+      "r1": 0.045,
+      "r2": 0.042,
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "thigh.R",
+      "type": "capsule",
+      "from": [
+        -0.2,
+        0.45,
+        -0.28
+      ],
+      "to": [
+        -0.3,
+        0.29,
+        -0.22
+      ],
+      "r1": 0.08,
+      "r2": 0.065,
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "shin.R",
+      "type": "capsule",
+      "from": [
+        -0.3,
+        0.29,
+        -0.22
+      ],
+      "to": [
+        -0.31,
+        0.1,
+        -0.36
+      ],
+      "r1": 0.058,
+      "r2": 0.048,
+      "color": "#2B1F1B"
+    },
+    {
+      "id": "metatarsus.R",
+      "type": "capsule",
+      "from": [
+        -0.31,
+        0.1,
+        -0.36
+      ],
+      "to": [
+        -0.32,
+        0.035,
+        -0.42
+      ],
+      "r1": 0.048,
+      "r2": 0.042,
+      "color": "#2B1F1B"
+    }
+  ],
+  "tail": {
+    "id": "tail",
+    "points": [
+      [
+        0,
+        0.42,
+        -0.5
+      ],
+      [
+        0.02,
+        0.44,
+        -0.64
+      ],
+      [
+        0.06,
+        0.5,
+        -0.78
+      ],
+      [
+        0.1,
+        0.6,
+        -0.9
+      ],
+      [
+        0.12,
+        0.68,
+        -1
+      ]
+    ],
+    "radii": [
+      0.1,
+      0.085,
+      0.065,
+      0.045,
+      0.018
+    ],
+    "color": "#2B1F1B"
+  },
+  "flames": [
+    {
+      "id": "flame.1",
+      "base": [
+        0.02,
+        0.735,
+        0.5
+      ],
+      "height": 0.25,
+      "halfWidthZ": 0.06,
+      "leanZ": 0.04,
+      "color": "#FF5A1F"
+    },
+    {
+      "id": "flame.2",
+      "base": [
+        -0.015,
+        0.615,
+        0.3
+      ],
+      "height": 0.385,
+      "halfWidthZ": 0.07,
+      "leanZ": 0.09,
+      "color": "#FF5A1F"
+    },
+    {
+      "id": "flame.3",
+      "base": [
+        0.02,
+        0.575,
+        0.07
+      ],
+      "height": 0.425,
+      "halfWidthZ": 0.075,
+      "leanZ": 0.11,
+      "color": "#FF5A1F"
+    },
+    {
+      "id": "flame.4",
+      "base": [
+        -0.02,
+        0.56,
+        -0.16
+      ],
+      "height": 0.36,
+      "halfWidthZ": 0.07,
+      "leanZ": 0.13,
+      "color": "#FF5A1F"
+    },
+    {
+      "id": "flame.5",
+      "base": [
+        0.015,
+        0.545,
+        -0.36
+      ],
+      "height": 0.27,
+      "halfWidthZ": 0.06,
+      "leanZ": 0.11,
+      "color": "#FF5A1F"
+    },
+    {
+      "id": "tail.flame",
+      "base": [
+        0.12,
+        0.68,
+        -1
+      ],
+      "height": 0.18,
+      "halfWidthZ": 0.06,
+      "leanZ": -0.05,
+      "color": "#FF5A1F"
+    }
+  ],
+  "anchors": {
+    "nose.tip": {
+      "id": "nose.tip",
+      "position": [
+        0,
+        0.54,
+        0.845
+      ]
+    },
+    "head.center": {
+      "id": "head.center",
+      "position": [
+        0,
+        0.61,
+        0.56
+      ]
+    },
+    "eye.L": {
+      "id": "eye.L",
+      "position": [
+        0.085,
+        0.635,
+        0.785
+      ]
+    },
+    "eye.R": {
+      "id": "eye.R",
+      "position": [
+        -0.085,
+        0.635,
+        0.785
+      ]
+    },
+    "shoulder.L": {
+      "id": "shoulder.L",
+      "position": [
+        0.22,
+        0.45,
+        0.26
+      ]
+    },
+    "shoulder.R": {
+      "id": "shoulder.R",
+      "position": [
+        -0.22,
+        0.45,
+        0.26
+      ]
+    },
+    "elbow.L": {
+      "id": "elbow.L",
+      "position": [
+        0.31,
+        0.3,
+        0.24
+      ]
+    },
+    "elbow.R": {
+      "id": "elbow.R",
+      "position": [
+        -0.31,
+        0.3,
+        0.24
+      ]
+    },
+    "wrist.L": {
+      "id": "wrist.L",
+      "position": [
+        0.33,
+        0.1,
+        0.3
+      ]
+    },
+    "wrist.R": {
+      "id": "wrist.R",
+      "position": [
+        -0.33,
+        0.1,
+        0.3
+      ]
+    },
+    "paw.front.L": {
+      "id": "paw.front.L",
+      "position": [
+        0.34,
+        0.035,
+        0.34
+      ]
+    },
+    "paw.front.R": {
+      "id": "paw.front.R",
+      "position": [
+        -0.34,
+        0.035,
+        0.34
+      ]
+    },
+    "hip.L": {
+      "id": "hip.L",
+      "position": [
+        0.2,
+        0.45,
+        -0.28
+      ]
+    },
+    "hip.R": {
+      "id": "hip.R",
+      "position": [
+        -0.2,
+        0.45,
+        -0.28
+      ]
+    },
+    "knee.L": {
+      "id": "knee.L",
+      "position": [
+        0.3,
+        0.29,
+        -0.22
+      ]
+    },
+    "knee.R": {
+      "id": "knee.R",
+      "position": [
+        -0.3,
+        0.29,
+        -0.22
+      ]
+    },
+    "ankle.L": {
+      "id": "ankle.L",
+      "position": [
+        0.31,
+        0.1,
+        -0.36
+      ]
+    },
+    "ankle.R": {
+      "id": "ankle.R",
+      "position": [
+        -0.31,
+        0.1,
+        -0.36
+      ]
+    },
+    "paw.hind.L": {
+      "id": "paw.hind.L",
+      "position": [
+        0.32,
+        0.035,
+        -0.42
+      ]
+    },
+    "paw.hind.R": {
+      "id": "paw.hind.R",
+      "position": [
+        -0.32,
+        0.035,
+        -0.42
+      ]
+    },
+    "tail.root": {
+      "id": "tail.root",
+      "position": [
+        0,
+        0.42,
+        -0.5
+      ]
+    },
+    "tail.tip": {
+      "id": "tail.tip",
+      "position": [
+        0.12,
+        0.68,
+        -1
+      ]
+    }
+  },
+  "blockoutHash": "cbc2f0c6800f3c363346c9306df95870050e3f4f8889219552e6b41fbeb70276"
+}
