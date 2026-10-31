@@ -4,12 +4,12 @@
 
 Animal Forge usa tres JSON de H3-C como caso de prueba del adaptador y de la validación de una sola fuente. No se copiaron imágenes, modelos ni la ficha artística.
 
-| Archivo | SHA-256 |
+| Archivo | SHA-256 (LF) |
 |---|---|
-| `MASTER_ANATOMY.json` | `3bc908f22b74ef88acd6f3236135018adc4d9d02ca730f00aa35290f4c6b6d3b` |
-| `MASTER_CREST_MAP.json` | `4473ac310e07cd1fd785951807fb96f63b3e1352f14631330e3e898636670ca8` |
-| `MASTER_MEASUREMENTS.json` | `c0f1a0080fe08bf3a50df1666fa2dce1a041c6ba091596229a93134fd4ff4ee3` |
+| `MASTER_ANATOMY.json` | `95b908683933f8850d2f260b9e8b7421ac2a8acf047cc3b03825fcc97ea66acd` |
+| `MASTER_CREST_MAP.json` | `a8e2fa49e256f6658e7fd48ae860422932914a5563fd4d81f40835f2207a5e3d` |
+| `MASTER_MEASUREMENTS.json` | `8c7867f1c834edd88a9935ac9385a850ac2dcfbe08d498b505aa9379daeffdb9` |
 
-- Los hashes se verifican en `forge/data/asset-manifest.json` y en `pnpm forge:validate` (`HASH_MISMATCH`).
+- Los hashes se calculan sobre el contenido canónico **LF** (independiente de Windows/Linux) y se verifican en `forge/data/asset-manifest.json` y en `pnpm forge:validate` (`HASH_MISMATCH`).
 - El adaptador recalcula las medidas desde la geometría; el valor de longitud es **1.845 m**, no 1.865 m. Cualquier discrepancia se reporta como `SNAPSHOT_DRIFT`.
 - La ausencia de aprobación artística se conserva: `approval.artApproved=false` y `status=DRAFT`.

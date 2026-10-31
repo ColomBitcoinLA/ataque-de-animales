@@ -9,7 +9,7 @@ import { loadEvolutions, validateEvolutions } from "./evolutions.mjs";
 import { loadWorldAssets, validateWorldAsset, verifyAssetFiles } from "./world-registry.mjs";
 import { loadDomainSpeciesIds } from "./domain-link.mjs";
 import { importH3CSalamander } from "./adapters/h3cSalamander.mjs";
-import { sha256File } from "./core/hash.mjs";
+import { sha256FileLF } from "./core/hash.mjs";
 
 export const FORGE_ROOT = fileURLToPath(new URL(".", import.meta.url));
 
@@ -96,7 +96,7 @@ export function runValidation({ root = process.cwd(), forgeRoot = FORGE_ROOT } =
   try {
     const manifest = JSON.parse(readFileSync(fixtureManifest, "utf8"));
     for (const entry of manifest.files || []) {
-      const actual = sha256File(join(root, entry.path));
+      const actual = sha256FileLF(join(root, entry.path));
       if (actual !== entry.sha256) errors.push({ code: "HASH_MISMATCH", path: entry.path, message: `expected ${entry.sha256}, got ${actual}` });
     }
   } catch {

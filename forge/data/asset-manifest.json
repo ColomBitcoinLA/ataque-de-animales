@@ -3,15 +3,15 @@
   "files": [
     {
       "path": "forge/fixtures/h3c/MASTER_ANATOMY.json",
-      "sha256": "3bc908f22b74ef88acd6f3236135018adc4d9d02ca730f00aa35290f4c6b6d3b"
+      "sha256": "95b908683933f8850d2f260b9e8b7421ac2a8acf047cc3b03825fcc97ea66acd"
     },
     {
       "path": "forge/fixtures/h3c/MASTER_CREST_MAP.json",
-      "sha256": "4473ac310e07cd1fd785951807fb96f63b3e1352f14631330e3e898636670ca8"
+      "sha256": "a8e2fa49e256f6658e7fd48ae860422932914a5563fd4d81f40835f2207a5e3d"
     },
     {
       "path": "forge/fixtures/h3c/MASTER_MEASUREMENTS.json",
-      "sha256": "c0f1a0080fe08bf3a50df1666fa2dce1a041c6ba091596229a93134fd4ff4ee3"
+      "sha256": "8c7867f1c834edd88a9935ac9385a850ac2dcfbe08d498b505aa9379daeffdb9"
     }
   ]
 }

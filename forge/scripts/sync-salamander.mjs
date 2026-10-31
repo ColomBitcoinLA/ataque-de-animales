@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { importH3CSalamander, applySnapshotToSpecies } from "../adapters/h3cSalamander.mjs";
-import { sha256File } from "../core/hash.mjs";
+import { sha256FileLF } from "../core/hash.mjs";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const FORGE = fileURLToPath(new URL("../", import.meta.url));
@@ -18,7 +18,7 @@ const manifest = {
     "forge/fixtures/h3c/MASTER_ANATOMY.json",
     "forge/fixtures/h3c/MASTER_CREST_MAP.json",
     "forge/fixtures/h3c/MASTER_MEASUREMENTS.json",
-  ].map((path) => ({ path, sha256: sha256File(join(ROOT, path)) })),
+  ].map((path) => ({ path, sha256: sha256FileLF(join(ROOT, path)) })),
 };
 writeFileSync(join(FORGE, "data/asset-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 

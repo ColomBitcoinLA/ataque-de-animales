@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { hashObject, sha256File, stableStringify } from "../core/hash.mjs";
+import { hashObject, sha256FileLF, stableStringify } from "../core/hash.mjs";
 
 export const DEFAULT_H3C_DIR = fileURLToPath(new URL("../fixtures/h3c", import.meta.url));
 const TOLERANCE_M = 0.001;
@@ -101,9 +101,9 @@ export function importH3CSalamander({ dir = DEFAULT_H3C_DIR } = {}) {
   }
 
   const sourceHashes = {
-    anatomy: sha256File(anatomyPath),
-    crest: sha256File(crestPath),
-    measurements: sha256File(measurementsPath),
+    anatomy: sha256FileLF(anatomyPath),
+    crest: sha256FileLF(crestPath),
+    measurements: sha256FileLF(measurementsPath),
   };
   const sourceHash = hashObject({ anatomy, crest, snapshot });
 
