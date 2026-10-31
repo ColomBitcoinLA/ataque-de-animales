@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0.0",
+  "assetId": "cali.roca.basalto-01",
+  "category": "rock",
+  "dimensions": { "x": 1.8, "y": 1.2, "z": 1.6 },
+  "pivot": "center",
+  "collision": { "type": "box", "size": [1.8, 1.2, 1.6] },
+  "materials": ["rock"],
+  "lods": [
+    { "level": 0, "triangles": 800 },
+    { "level": 1, "triangles": 300 }
+  ],
+  "files": { "model": null, "textures": [] },
+  "provenance": { "origin": "original-kit", "license": "ISC" }
+}

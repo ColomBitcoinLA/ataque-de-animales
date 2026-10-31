@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0.0",
+  "assetId": "cali.vereda.modulo-01",
+  "category": "streetModule",
+  "dimensions": { "x": 2.0, "y": 0.15, "z": 2.0 },
+  "pivot": "base",
+  "collision": { "type": "box", "size": [2.0, 0.15, 2.0] },
+  "materials": ["concrete"],
+  "lods": [
+    { "level": 0, "triangles": 600 },
+    { "level": 1, "triangles": 200 }
+  ],
+  "files": { "model": null, "textures": [] },
+  "provenance": { "origin": "original-kit", "license": "ISC" }
+}

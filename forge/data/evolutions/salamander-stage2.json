@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0.0",
+  "evolutionId": "salamander.v3.to.stage2",
+  "fromVisualId": "salamander.v3",
+  "toVisualId": "salamander.v3.stage2",
+  "stage": 2,
+  "preservedTraits": ["silhouette.quadruped", "face.eye.integrated", "crest.family.volcanic", "tail.s-curve", "proportions.height"],
+  "allowedMorphs": ["crest.height", "body.length", "tail.length"],
+  "status": "DRAFT",
+  "provenance": { "origin": "original-design-contract", "license": "ISC" }
+}

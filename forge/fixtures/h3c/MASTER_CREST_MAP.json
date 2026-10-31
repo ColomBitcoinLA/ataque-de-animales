@@ -1,0 +1,164 @@
+{
+  "schema": "salamander-v3-crest-map/1",
+  "status": "DRAFT v0.2",
+  "count": 5,
+  "order": "flame.1 (nuca) -> flame.5 (lomo posterior)",
+  "tongues": [
+    {
+      "id": "flame.1",
+      "order": 1,
+      "base": [
+        0.02,
+        0.735,
+        0.5
+      ],
+      "height": 0.25,
+      "halfWidthZ": 0.06,
+      "halfThicknessX": 0.035,
+      "yawDeg": -28,
+      "leanZ": 0.04,
+      "curveX": 0.02,
+      "branches": [
+        {
+          "id": "flame.1.a",
+          "base": [
+            0.028,
+            0.873,
+            0.522
+          ],
+          "height": 0.095,
+          "halfWidthZ": 0.03,
+          "halfThicknessX": 0.018,
+          "yawDeg": -16,
+          "leanZ": 0.03,
+          "curveX": -0.01
+        }
+      ]
+    },
+    {
+      "id": "flame.2",
+      "order": 2,
+      "base": [
+        -0.015,
+        0.615,
+        0.3
+      ],
+      "height": 0.385,
+      "halfWidthZ": 0.07,
+      "halfThicknessX": 0.04,
+      "yawDeg": 24,
+      "leanZ": 0.09,
+      "curveX": -0.025,
+      "branches": [
+        {
+          "id": "flame.2.a",
+          "base": [
+            -0.03,
+            0.827,
+            0.349
+          ],
+          "height": 0.125,
+          "halfWidthZ": 0.034,
+          "halfThicknessX": 0.02,
+          "yawDeg": 30,
+          "leanZ": 0.05,
+          "curveX": 0.012
+        }
+      ]
+    },
+    {
+      "id": "flame.3",
+      "order": 3,
+      "base": [
+        0.02,
+        0.575,
+        0.07
+      ],
+      "height": 0.425,
+      "halfWidthZ": 0.075,
+      "halfThicknessX": 0.045,
+      "yawDeg": -14,
+      "leanZ": 0.11,
+      "curveX": 0.03,
+      "branches": [
+        {
+          "id": "flame.3.a",
+          "base": [
+            0.05,
+            0.809,
+            0.13
+          ],
+          "height": 0.14,
+          "halfWidthZ": 0.036,
+          "halfThicknessX": 0.02,
+          "yawDeg": -24,
+          "leanZ": 0.06,
+          "curveX": -0.012
+        }
+      ]
+    },
+    {
+      "id": "flame.4",
+      "order": 4,
+      "base": [
+        -0.02,
+        0.56,
+        -0.16
+      ],
+      "height": 0.36,
+      "halfWidthZ": 0.07,
+      "halfThicknessX": 0.04,
+      "yawDeg": 30,
+      "leanZ": 0.13,
+      "curveX": -0.025,
+      "branches": [
+        {
+          "id": "flame.4.a",
+          "base": [
+            -0.045,
+            0.758,
+            -0.088
+          ],
+          "height": 0.115,
+          "halfWidthZ": 0.032,
+          "halfThicknessX": 0.018,
+          "yawDeg": 16,
+          "leanZ": 0.06,
+          "curveX": 0.01
+        }
+      ]
+    },
+    {
+      "id": "flame.5",
+      "order": 5,
+      "base": [
+        0.015,
+        0.545,
+        -0.36
+      ],
+      "height": 0.27,
+      "halfWidthZ": 0.06,
+      "halfThicknessX": 0.035,
+      "yawDeg": -24,
+      "leanZ": 0.11,
+      "curveX": 0.02,
+      "branches": []
+    }
+  ],
+  "tailFlame": {
+    "id": "tail.flame",
+    "base": [
+      0.12,
+      0.68,
+      -1.0
+    ],
+    "height": 0.18,
+    "halfWidthZ": 0.06,
+    "halfThicknessX": 0.03,
+    "yawDeg": 12,
+    "leanZ": -0.05,
+    "curveX": 0.01,
+    "branches": []
+  },
+  "countRule": "Se cuentan solo las lenguas principales flame.1..flame.5; las ramas .a son secundarias."
+}

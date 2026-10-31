@@ -22,14 +22,19 @@
     "test:security": "node --test \"tests/integration/security.test.cjs\" \"tests/unit/*.test.cjs\"",
     "perf:baseline": "node scripts/perf-baseline.cjs",
     "check": "node scripts/check-syntax.cjs",
-    "gate:m0": "node scripts/m0-gate.cjs"
+    "gate:m0": "node scripts/m0-gate.cjs",
+    "forge:validate": "node forge/cli.mjs validate",
+    "forge:inspect": "node forge/cli.mjs inspect salamander.v3",
+    "forge:build": "node forge/cli.mjs build-reference salamander",
+    "forge:preview": "node forge/cli.mjs render-preview salamander",
+    "forge:verify": "node forge/cli.mjs verify-assets"
   },
   "engines": {
     "node": ">=22.12"
   },
   "dependencies": {
     "cors": "^2.8.6",
-    "express": "^5.2.1",
+    "express": "^5.3.0",
     "google-auth-library": "^11.1.0",
     "ws": "^8.18.3"
   },

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0.0",
+  "files": [
+    {
+      "path": "forge/fixtures/h3c/MASTER_ANATOMY.json",
+      "sha256": "95b908683933f8850d2f260b9e8b7421ac2a8acf047cc3b03825fcc97ea66acd"
+    },
+    {
+      "path": "forge/fixtures/h3c/MASTER_CREST_MAP.json",
+      "sha256": "a8e2fa49e256f6658e7fd48ae860422932914a5563fd4d81f40835f2207a5e3d"
+    },
+    {
+      "path": "forge/fixtures/h3c/MASTER_MEASUREMENTS.json",
+      "sha256": "8c7867f1c834edd88a9935ac9385a850ac2dcfbe08d498b505aa9379daeffdb9"
+    }
+  ]
+}

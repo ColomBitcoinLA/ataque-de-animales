@@ -1,0 +1,82 @@
+{
+  "height_m": 1.0,
+  "shoulder_m": 0.55,
+  "length_m": 1.845,
+  "body_width_m": 0.64,
+  "stance_outer_m": 0.82,
+  "eye_diameter_m": 0.09,
+  "eye_gap_m": 0.08,
+  "eye_centers_x": [
+    0.085,
+    -0.085
+  ],
+  "tail_offset_m": 0.12,
+  "tail_tip_m": [
+    0.12,
+    0.68,
+    -1.0
+  ],
+  "crest_main_tongues": 5,
+  "crest_ids": [
+    "flame.1",
+    "flame.2",
+    "flame.3",
+    "flame.4",
+    "flame.5"
+  ],
+  "toes_per_paw": {
+    "front.L": 4,
+    "hind.L": 4,
+    "front.R": 4,
+    "hind.R": 4
+  },
+  "feet_bottom_m": 0.0,
+  "ground_y_m": 0.0,
+  "contract": {
+    "height": [
+      0.98,
+      1.02
+    ],
+    "shoulderHeight": [
+      0.52,
+      0.58
+    ],
+    "length": [
+      1.82,
+      1.92
+    ],
+    "bodyWidth": [
+      0.62,
+      0.66
+    ],
+    "eyeDiameter": [
+      0.085,
+      0.1
+    ],
+    "eyeGap": [
+      0.06,
+      0.08
+    ],
+    "tailOffset": [
+      0.08,
+      0.14
+    ],
+    "crestCount": [
+      4,
+      5
+    ]
+  },
+  "checks": {
+    "height": true,
+    "shoulder": true,
+    "length": true,
+    "body_width": true,
+    "eye_diameter": true,
+    "eye_gap": true,
+    "tail_offset": true,
+    "feet_on_ground": true,
+    "crest_count": true,
+    "toes_4_per_paw": true
+  },
+  "all_pass": true
+}

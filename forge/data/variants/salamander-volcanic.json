@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0.0",
+  "variantId": "salamander.v3.volcanic",
+  "speciesVisualId": "salamander.v3",
+  "kind": "COSMETIC",
+  "status": "DRAFT",
+  "overrides": {
+    "palette.id": "volcanic",
+    "fire.intensity": 1.0,
+    "crest.tint": "#FF5A1F"
+  },
+  "preservedTraits": ["silhouette.quadruped", "face.eye.integrated", "crest.family.volcanic", "tail.s-curve", "proportions.height"],
+  "parentVariantId": null,
+  "provenance": { "origin": "original-vector-h3c-experimental", "license": "ISC" }
+}

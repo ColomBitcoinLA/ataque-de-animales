@@ -93,6 +93,10 @@ async function runM0Gate() {
 
   // 7. Full Test Suite (pnpm test)
   const testRes = runCommand('node --test "tests/**/*.test.cjs"');
+  if (testRes.code !== 0) {
+    console.error(testRes.stdout);
+    console.error(testRes.stderr);
+  }
   recordCheck(
     "7. Full Test Suite (Unit & Integration)",
     testRes.code === 0,

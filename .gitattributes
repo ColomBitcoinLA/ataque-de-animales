@@ -1,0 +1,5 @@
+# Animal Forge text assets must be byte-stable across platforms.
+forge/**/*.json text eol=lf
+forge/**/*.mjs text eol=lf
+forge/**/*.cjs text eol=lf
+forge/**/*.md text eol=lf
